@@ -1,0 +1,186 @@
+@charset "utf-8";
+
+#articlelist {
+    margin: 0px auto;
+    margin-top: 40px;
+    width: 1130px;
+}
+
+table.listtable {
+    width: 100%;
+}
+
+table.listtable tr td {
+    border-bottom: 1px solid #ddd;
+    padding: 7px 3px;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+table.listtable tr:last-child td {
+    border-bottom: none;
+}
+
+table.listtable tr td.mode {
+    width: 22px;
+}
+
+table.listtable tr td.mode div {
+    background-image: url('../images/mode_sprites.png');
+    background-repeat: no-repeat;
+    background-position: 0px 0px;
+    width: 16px;
+    height: 16px;
+    display: inline-block;
+}
+
+table.listtable tr td.mode div.hidden {
+    background-position: 0px 0px;
+}
+
+table.listtable tr td.mode div.visible {
+    background-position: -16px 0px;
+}
+
+table.listtable tr td.mode div.timed {
+    background-position: -32px 0px;
+}
+
+table.listtable tr td.mode div.released {
+    background-position: -48px 0px;
+}
+
+table.listtable tr td.mode div.draft {
+    background-position: -64px 0px;
+}
+
+table.listtable tr td.mode div.edited {
+    background-position: -80px 0px;
+}
+
+table.listtable tr td.mode div.deleted {
+    background-position: -96px 0px;
+}
+
+table.listtable tr td.date.timed {
+    color: #777;
+}
+
+table.listtable tr td.controls {
+    width: 100px;
+    padding: 0px;
+}
+
+table.listtable tr td.controls ul.controls {
+    display: none;
+    float: right;
+}
+
+table.listtable tr:hover td.controls ul.controls {
+    display: inline-block;
+}
+
+table.listtable td.title div.title {
+    white-space: normal; /* There's very little else that can reasonably be done to prevent very long subject lines from
+                          * breaking the control buttons, other than allowing them to wrap as needed. */
+}
+
+table.listtable td.title ul.info {
+    font-size: 10px;
+    color: #666;
+    margin: 0px;
+    padding: 0px;
+}
+
+table.listtable td.title ul.info li {
+    padding: 0px;
+    list-style-type: none;
+    display: inline;
+}
+
+.control.edit {
+    background-position: 0px 0px;
+}
+
+.control.edit:hover {
+    background-position: 0px -32px;
+}
+
+.control.edit.ctrldisabled {
+    background-position: 0px -16px;
+}
+
+.control.delete {
+    background-position: -16px 0px;
+}
+
+.control.delete:hover {
+    background-position: -16px -32px;
+}
+
+.control.delete.ctrldisabled {
+    background-position: -16px -16px;
+}
+
+.control.undelete {
+    background-position: -64px 0px;
+}
+
+.control.undelete:hover {
+    background-position: -64px -32px;
+}
+
+.control.undelete.ctrldisabled {
+    background-position: -64px -16px;
+}
+
+.control.publish {
+    background-position: -32px 0px;
+}
+
+.control.publish:hover {
+    background-position: -32px -32px;
+}
+
+.control.publish.ctrldisabled {
+    background-position: -32px -16px;
+}
+
+.control.hide {
+    background-position: -48px 0px;
+}
+
+.control.hide:hover {
+    background-position: -48px -32px;
+}
+
+.control.hide.ctrldisabled {
+    background-position: -48px -16px;
+}
+
+
+ul.info li .state.invalid {
+    color: #666;
+}
+
+ul.info li .state.pending {
+    color: #007b74;
+}
+
+ul.info li .state.sending {
+    color: #a69400;
+}
+
+ul.info li .state.draft,
+ul.info li .state.sent {
+    color: #00a600;
+}
+
+ul.info li .state.cancelled {
+    color: #a68d00;
+}
+
+ul.info li .state.failed {
+    color: #ff0000;
+    font-weight: bold;
+}
