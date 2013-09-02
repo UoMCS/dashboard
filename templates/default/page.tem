@@ -28,7 +28,7 @@
     </style>
     <![endif]-->
 </head>
-<body id="newsagent" class="newsagent">
+<body id="dashboard" class="dashboard">
 <div id="content" class="content clear">
 ***content***
             <script type="text/javascript">

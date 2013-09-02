@@ -7,7 +7,7 @@
 @import url('inputglow.css');  /* make input boxes glow when active    */
 @import url('controls.css');   /* sprite-based control buttons         */
 
-.newsagent #topbar {
+.dashboard #topbar {
     position: absolute;
     left: 0px;
     top: 0px;
@@ -17,7 +17,7 @@
     background-repeat: repeat-x;
 }
 
-.newsagent #titleblock {
+.dashboard #titleblock {
     line-height: 36px;
     float: left;
     margin-left: 15px;
@@ -28,13 +28,13 @@
     background-position: right center;
 }
 
-.newsagent #topbar ul {
+.dashboard #topbar ul {
     float: right;
     padding: 0px;
     margin: 0px;
 }
 
-.newsagent #topbar ul li {
+.dashboard #topbar ul li {
     line-height: 36px;
     float: left;
     list-style: none;
@@ -45,7 +45,7 @@
     background-position: left center;
 }
 
-.newsagent #botbar {
+.dashboard #botbar {
     position: absolute;
     left: 0px;
     bottom: 0px;
@@ -55,14 +55,14 @@
     background-repeat: repeat-x;
 }
 
-.newsagent #botbar ul {
+.dashboard #botbar ul {
     float: right;
     padding: 0px;
     margin: 0px;
     padding-right: 10px;
 }
 
-.newsagent #botbar ul li {
+.dashboard #botbar ul li {
     line-height: 46px;
     float: left;
     list-style: none;
@@ -70,7 +70,7 @@
     padding-right: 5px;
 }
 
-.newsagent #botbar #navblock {
+.dashboard #botbar #navblock {
     position: absolute;
     left: 0px;
     bottom: 0px;
@@ -79,11 +79,11 @@
     text-align: center;
 }
 
-.newsagent #botbar #navblock #navinner {
+.dashboard #botbar #navblock #navinner {
     display: inline-block;
 }
 
-.newsagent #botbar #navblock #navinner #leftbar {
+.dashboard #botbar #navblock #navinner #leftbar {
     float: left;
     width: 5px;
     height: 46px;
@@ -92,7 +92,7 @@
     background-position: left center;
 }
 
-.newsagent #botbar #navblock #navinner #rightbar {
+.dashboard #botbar #navblock #navinner #rightbar {
     float: right;
     width: 5px;
     height: 46px;
@@ -101,40 +101,40 @@
     background-position: right center;
 }
 
-.newsagent #botbar #navblock #navinner #navfloat {
+.dashboard #botbar #navblock #navinner #navfloat {
     float: left;
     margin-top: 6px;
 }
 
-.newsagent #botbar #navblock #navinner #navfloat #navbox {
+.dashboard #botbar #navblock #navinner #navfloat #navbox {
     margin: auto;
     border-collapse: collapse;
 }
 
-.newsagent #botbar #navblock #navinner #navfloat #navbox td {
+.dashboard #botbar #navblock #navinner #navfloat #navbox td {
     padding: 3px 3px;
 }
 
-.newsagent #botbar #navblock #navinner #navfloat #navbox td.navleft {
+.dashboard #botbar #navblock #navinner #navfloat #navbox td.navleft {
     vertical-align: middle;
     text-align: left;
     padding-right: 4px;
 }
 
-.newsagent #botbar #navblock #navinner #navfloat #navbox td.navright {
+.dashboard #botbar #navblock #navinner #navfloat #navbox td.navright {
     vertical-align: middle;
     text-align: right;
     padding-left: 4px;
 }
 
-.newsagent #displaycore {
+.dashboard #displaycore {
     padding-top: 36px;
     padding-bottom: 46px;
     position: relative;
     overflow: hidden;
 }
 
-.newsagent #displaycore div.imageframe {
+.dashboard #displaycore div.imageframe {
     position: absolute;
     border: 1px solid red;
 }

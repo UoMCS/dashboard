@@ -1,0 +1,5 @@
+WEBSITE_TITLE    = PHP Web Publishing
+WEBSITE_NOREPOS  = You do not currently have a published website. Please enter the URL of a git project to publish as your website in the box below. Note that the project you select <em>must be public</em>: you can not publish private projects.
+WEBSITE_REPOS    = Git project
+WEBSITE_REPOSEG  = https://gitlab.cs.man.ac.uk/your.username/project.git
+WEBSITE_SETREPOS = Publish project

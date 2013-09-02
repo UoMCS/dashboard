@@ -29,6 +29,7 @@ use Dashboard::System::Metadata;
 use Dashboard::System::Roles;
 use Dashboard::System::Tags;
 use Dashboard::System::UserDataBridge;
+use Dashboard::System::Git;
 
 ## @method $ init(%args)
 # Initialise the Dashboard System's references to other system objects. This
@@ -55,29 +56,34 @@ sub init {
         or return undef;
 
     # now create the Dashboard-specific objects
+    $self -> {"git"} = Dashboard::System::Git -> new(dbh      => $self -> {"dbh"},
+                                                     settings => $self -> {"settings"},
+                                                     logger   => $self -> {"logger"})
+        or return $self -> self_error("Git init failed: ".$Webperl::SystemModule::errstr);
+
     $self -> {"metadata"} = Dashboard::System::Metadata -> new(dbh      => $self -> {"dbh"},
                                                               settings => $self -> {"settings"},
                                                               logger   => $self -> {"logger"})
-        or return $self -> self_error("Metadata system init failed: ".$Metadata::errstr);
+        or return $self -> self_error("Metadata system init failed: ".$Webperl::SystemModule::errstr);
 
     $self -> {"tags"} = Dashboard::System::Tags -> new(dbh      => $self -> {"dbh"},
                                                       settings => $self -> {"settings"},
                                                       logger   => $self -> {"logger"},
                                                       metadata => $self -> {"metadata"})
-        or return $self -> self_error("Tag system init failed: ".$Tags::errstr);
+        or return $self -> self_error("Tag system init failed: ".$Webperl::SystemModule::errstr);
 
     $self -> {"roles"} = Dashboard::System::Roles -> new(dbh      => $self -> {"dbh"},
                                                         settings => $self -> {"settings"},
                                                         logger   => $self -> {"logger"},
                                                         metadata => $self -> {"metadata"})
-        or return $self -> self_error("Roles system init failed: ".$Roles::errstr);
+        or return $self -> self_error("Roles system init failed: ".$Webperl::SystemModule::errstr);
 
     $self -> {"userdata"} = Dashboard::System::UserDataBridge -> new(dbh      => $self -> {"dbh"},
                                                                      settings => $self -> {"settings"},
                                                                      logger   => $self -> {"logger"},
                                                                      metadata => $self -> {"metadata"},
                                                                      roles    => $self -> {"roles"})
-        or return $self -> self_error("UserData system init failed: ".$Roles::errstr);
+        or return $self -> self_error("UserData system init failed: ".$Webperl::SystemModule::errstr);
 
     return 1;
 }
