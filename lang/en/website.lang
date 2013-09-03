@@ -1,5 +1,15 @@
-WEBSITE_TITLE    = PHP Web Publishing
-WEBSITE_NOREPOS  = You do not currently have a published website. Please enter the URL of a git project to publish as your website in the box below. Note that the project you select <em>must be public</em>: you can not publish private projects.
-WEBSITE_REPOS    = Git project
-WEBSITE_REPOSEG  = https://gitlab.cs.man.ac.uk/your.username/project.git
-WEBSITE_SETREPOS = Publish project
+WEBSITE_TITLE      = PHP Web Publishing
+WEBSITE_NOREPOS    = You do not currently have a published website. Please enter the URL of a git project to publish as your website in the box below. Note that the project you select <em>must be public</em>: you can not publish private projects.
+WEBSITE_REPOS      = Git project
+WEBSITE_REPOSEG    = https://gitlab.cs.man.ac.uk/your.username/project.git
+
+WEBSITE_GOTREPOS   = Your website has been published based on the contents of the project given below. Whenever you update the project, you will need to press the "Update" button below to fetch the latest changes.
+WEBSITE_LOCATION   = Your website is accessible at the following location:
+
+WEBSITE_SETREPOS    = Publish project
+WEBSITE_PULLREPOS   = Update
+WEBSITE_NUKEREPOS   = Delete website
+WEBSITE_CHANGEREPOS = Change project
+
+WEBSITE_CLONE_FAIL    = Publish failed. The system can not publish the selected repository, the follwing errors were encountered:
+WEBSITE_CLONE_SUCCESS = Publis successful! The selected project has been cloned as your web directory and is now usable.

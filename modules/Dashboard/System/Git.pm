@@ -23,6 +23,7 @@ package Dashboard::System::Git;
 use strict;
 use base qw(Webperl::SystemModule);
 use Webperl::Utils qw(path_join);
+use Git::Repository;
 use v5.12;
 
 ## @method $ user_web_repo_exists($username)
@@ -34,20 +35,58 @@ use v5.12;
 #         undef on error.
 sub user_web_repo_exists {
     my $self     = shift;
-    my $username = shift;
+    my $username = lc(shift);
 
     $self -> clear_error();
 
     # Path to the user's config file, if it exists
-    my $config = path_join($self -> {"settings"} -> {"Git:web_repo_base"}, $username, ".git", "config");
+    my $config = path_join($self -> {"settings"} -> {"git"} -> {"webbasedir"}, $username, ".git", "config");
 
     return 0 if(!-f $config);
 
     # Hey, what do you know, ConfigMicro can parse git configs!
-    my $config = Webperl::ConfigMicro -> new($config)
+    my $settings = Webperl::ConfigMicro -> new($config)
         or return $self -> self_error("Repository check failed: ".$Webperl::SystemModule::errstr);
 
-    return $config -> {'remote "origin"'} -> {"url"};
+    return $settings -> {'remote "origin"'} -> {"url"};
 }
+
+
+
+## @method $ clone_repository($repository, $username)
+# Clone the specified repository and move it into the user's web space.
+#
+# @param repository The URL of the repository to clone.
+# @param username   The name of the user cloning the repository.
+# @return true on success, undef on error.
+sub clone_repository {
+    my $self       = shift;
+    my $repository = shift;
+    my $username   = lc(shift);
+
+    $self -> clear_error();
+
+    # perform the pre-clone step
+    my $res = `sudo $self->{settings}->{repostools}->{preclone} $username`;
+    return $self -> self_error("Clone failed: $res") if($res);
+
+    # Do the clone itself
+    my $target = path_join($self -> {"settings"} -> {"git"} -> {"webtempdir"}, $username);
+    my $output = eval { Git::Repository -> run(clone => $repository => $target,
+                                               { git => "/usr/bin/git", input => "" }); };
+    if(my $err = $@) {
+        return $self -> self_error("Failed while attempting to clone a private project. Make the project public and try again.")
+            if($err =~ /could not read Username for/);
+
+        return $self -> self_error("Clone failed: $err\n");
+    }
+
+    # clone is complete, move the clone into position
+    $res = `sudo $self->{settings}->{repostools}->{postgit} $username`;
+    return $self -> self_error("Clone failed: $res") if($res);
+
+    return 1;
+}
+
 
 1;

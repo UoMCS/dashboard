@@ -1,0 +1,16 @@
+<li class="shadowbox">
+    <h2>{L_WEBSITE_TITLE}</h2>
+    <div class="sbcontent">
+        <div>{L_WEBSITE_GOTREPOS}</div>
+        <blockquote><div>{L_WEBSITE_REPOS}: ***web-repos***</div></blockquote>
+        <div>{L_WEBSITE_LOCATION}</div>
+        <blockquote><div><a href="***web_url***">***web_url***</a></div></blockquote>
+        <hr />
+        <div class="submitbox">
+            <input type="button" class="button blue" value="{L_WEBSITE_PULLREPOS}" id="pullrepos" />
+            <input type="button" class="button red"  value="{L_WEBSITE_NUKEREPOS}" id="nukerepos" />
+            <input type="button" class="button red"  value="{L_WEBSITE_CHANGEREPOS}" id="setrepos" />
+        </div>
+        </form>
+    </div>
+</li>

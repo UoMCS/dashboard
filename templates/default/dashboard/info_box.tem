@@ -1,0 +1,7 @@
+<table id="notebox" class="notebox notebox-notice">
+    <tr>
+        <td class="nbox-image"><img src="{V_[scriptpath]}templates/default/images/info.png" width="48" height="48" alt="info" /></td>
+        <td class="nbox-text">***message***</td>
+    </tr>
+</table>
+<script type="text/javascript">window.addEvent('domready', function() { setTimeout(function() { $('notebox').dissolve() }, 8000); });</script>

@@ -22,12 +22,12 @@ package Dashboard::Dashboard;
 use strict;
 use base qw(Dashboard); # This class extends the Dashboard block class
 use v5.12;
-
+use Webperl::Utils qw(path_join);
 
 # ============================================================================
 #  Repository/web related
 
-## @method private @ _validate_repository_fields($args)
+## @method private $ _validate_repository_fields($args)
 # Determine whether the repository field set by the user is valid and appears
 # to correspond to a possible repository.
 #
@@ -50,6 +50,35 @@ sub _validate_repository_fields {
 }
 
 
+## @method private @ _validate_repository()
+# Determine whether the repository field set by the user is valid and appears
+# to correspond to a possible repository. If it is, perform the clone process
+# for the user.
+#
+sub _validate_repository {
+    my $self = shift;
+    my ($args, $errors, $error) = ({}, "", "", undef);
+    my $user = $self -> {"session"} -> get_user_byid();
+
+    $error = $self -> _validate_repository_fields($args);
+    $errors .= $error if($error);
+
+    return ($self -> {"template"} -> load_template("error/error_list.tem", {"***message***" => "{L_WEBSITE_CLONE_FAIL}",
+                                                                            "***errors***"  => $errors}), $args)
+        if($errors);
+
+    # The respository appears to be valid, do the clone
+    $self -> {"system"} -> {"git"} -> clone_repository($args -> {"web-repos"}, $user -> {"username"})
+        or return ($self -> {"template"} -> load_template("error/error_list.tem", {"***message***" => "{L_WEBSITE_CLONE_FAIL}",
+                                                                                   "***errors***"  => $self -> {"template"} -> load_template("error/error_item.tem",
+                                                                                                                                             {"***error***" => $self -> {"system"} -> {"git"} -> errstr(),
+                                                                                                                                             })
+                                                          }), $args);
+
+    print $self -> {"cgi"} -> redirect($self -> build_url(pathinfo => ["cloned"]));
+    exit;
+}
+
 
 ## @method private $ _set_repository()
 # Set the user's repository to the repository they specify in the form, if possible.
@@ -58,14 +87,20 @@ sub _validate_repository_fields {
 #         page content.
 sub _set_repository {
     my $self = shift;
+    my $error = "";
+    my $args  = {};
 
+    if($self -> {"cgi"} -> param("setrepos")) {
+        ($error, $args) = $self -> _validate_repository();
+    }
 
-
+    return $self -> _generate_dashboard($args, $error);
 }
 
 
 # ============================================================================
 #  Content generation
+
 
 ## @method private $ _generate_web_publish($user, $args)
 # Generate a block containing the information about/options for the user
@@ -85,21 +120,30 @@ sub _generate_web_publish {
     if(!$origin) {
         return $self -> {"template"} -> load_template("dashboard/web/norepo.tem", {"***web-repos***" => $args -> {"web-repos"},
                                                                                    "***form_url***"  => $self -> build_url(block => "dashboard", "pathinfo" => [ "setrepos" ])});
+    } else {
+        return $self -> {"template"} -> load_template("dashboard/web/repo.tem"  , {"***web-repos***" => $origin,
+                                                                                   "***web_url***"   => path_join($self -> {"settings"} -> {"git"} -> {"webbaseurl"}, lc($user -> {"username"}),"/"),
+                                                                                   "***pull_url***"  => $self -> build_url(block => "dashboard", "pathinfo" => [ "pullrepos" ]),
+                                                                                   "***nuke_url***"  => $self -> build_url(block => "dashboard", "pathinfo" => [ "nukerepos" ]),
+                                                                                   "***clone_url***" => $self -> build_url(block => "dashboard", "pathinfo" => [ "setrepos" ]),
+                                                      });
     }
 }
 
 
-# @method private @ _generate_dashboard($args, $error)
+# @method private @ _generate_dashboard($args, $error, $message)
 # Generate the page content for a dashboard page.
 #
-# @param args  An optional reference to a hash containing defaults for the form fields.
-# @param error An optional error message to display above the form if needed.
+# @param args    An optional reference to a hash containing defaults for the form fields.
+# @param error   An optional error message to display above the form if needed.
+# @param message An optional info message to display above the form if needed.
 # @return Two strings, the first containing the page title, the second containing the
 #         page content.
 sub _generate_dashboard {
-    my $self  = shift;
-    my $args  = shift || { };
-    my $error = shift;
+    my $self    = shift;
+    my $args    = shift || { };
+    my $error   = shift;
+    my $message = shift;
 
     # Get the current user's information
     my $user  = $self -> {"session"} -> get_user_byid();
@@ -111,8 +155,13 @@ sub _generate_dashboard {
     $error = $self -> {"template"} -> load_template("error/error_box.tem", {"***message***" => $error})
         if($error);
 
+    # and the info box
+    $message = $self -> {"template"} -> load_template("dashboard/info_box.tem", {"***message***" => $message})
+        if($message);
+
     return ($self -> {"template"} -> replace_langvar("DASHBOARD_TITLE"),
             $self -> {"template"} -> load_template("dashboard/content.tem", {"***errorbox***" => $error,
+                                                                             "***infobox***"  => $message,
                                                                              "***webpart***"  => $webblock,
                                                    }));
 }
@@ -176,6 +225,8 @@ sub page_display {
         } else {
             given($pathinfo[0]) {
                 when("setrepos") { ($title, $content, $extrahead) = $self -> _set_repository(); }
+                when("cloned")   { ($title, $content, $extrahead) = $self -> _generate_dashboard(undef, undef, "{L_WEBSITE_CLONE_SUCCESS}"); }
+
                 default {
                     ($title, $content, $extrahead) = $self -> _generate_dashboard();
                 }
