@@ -12,4 +12,6 @@ WEBSITE_NUKEREPOS   = Delete website
 WEBSITE_CHANGEREPOS = Change project
 
 WEBSITE_CLONE_FAIL    = Publish failed. The system can not publish the selected repository, the follwing errors were encountered:
-WEBSITE_CLONE_SUCCESS = Publis successful! The selected project has been cloned as your web directory and is now usable.
+WEBSITE_CLONE_SUCCESS = Publish successful! The selected project has been cloned as your web directory and is now usable.
+
+WEBSITE_PULL_SUCCESS  = Update successful. Your website is now using the latest version of your project.

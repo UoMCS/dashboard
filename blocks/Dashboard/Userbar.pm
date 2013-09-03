@@ -64,6 +64,7 @@ sub block_display {
     } # if(!$self -> {"session"} -> anonymous_session())
 
     return $self -> {"template"} -> load_template("userbar/userbar.tem", {"***pagename***"   => $title,
+                                                                          "***mainurl***"    => $self -> build_url(block => $self -> {"settings"} -> {"config"} -> {"default_block"}, pathinfo => []),
                                                                           "***site-admin***" => $siteadmin,
                                                                           "***profile***"    => $userprofile});
 }

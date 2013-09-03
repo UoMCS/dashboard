@@ -1,4 +1,4 @@
-#!/usr/bin/perl -wT
+#!/usr/bin/perl -w
 # Note: above -w flag should be removed in production, as it will cause warnings in
 # 3rd party modules to appear in the server error log
 

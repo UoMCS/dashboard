@@ -101,7 +101,6 @@ sub _set_repository {
 # ============================================================================
 #  Content generation
 
-
 ## @method private $ _generate_web_publish($user, $args)
 # Generate a block containing the information about/options for the user
 # related to publishing their website via git.
@@ -168,6 +167,25 @@ sub _generate_dashboard {
 
 
 # ============================================================================
+#  API functions
+
+## @method $ _update_repository()
+# An API function that triggers a git pull on the user's repository.
+#
+# @return Either a string containing a block of html to send back to the user,
+#         or a hash encoding an API error message.
+sub _update_repository {
+    my $self = shift;
+    my $user = $self -> {"session"} -> get_user_byid();
+
+    $self -> {"system"} -> {"git"} -> pull_repository($user -> {"username"})
+        or return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"system"} -> {"git"} -> errstr()}));
+
+    return $self -> {"template"} -> load_template("dashboard/info_box.tem", {"***message***" => "{L_WEBSITE_PULL_SUCCESS}"});
+}
+
+
+# ============================================================================
 #  Interface functions
 
 ## @method $ page_display()
@@ -210,6 +228,7 @@ sub page_display {
     if(defined($apiop)) {
         # API call - dispatch to appropriate handler.
         given($apiop) {
+            when ("pullrepo") { return $self -> api_html_response($self -> _update_repository()); }
             default {
                 return $self -> api_html_response($self -> api_errorhash('bad_op',
                                                                          $self -> {"template"} -> replace_langvar("API_BAD_OP")))

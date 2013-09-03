@@ -41,3 +41,7 @@ dl.input > dd > input[type="radio"] {
 .submitbox {
     margin-top: 0.5em;
 }
+
+img.workspin {
+    opacity: 0;
+}

@@ -22,7 +22,7 @@ package Dashboard::System::Git;
 
 use strict;
 use base qw(Webperl::SystemModule);
-use Webperl::Utils qw(path_join);
+use Webperl::Utils qw(path_join blind_untaint);
 use Git::Repository;
 use v5.12;
 
@@ -66,12 +66,15 @@ sub clone_repository {
 
     $self -> clear_error();
 
+    my ($safename) = $username =~/^([.\w]+)$/;
+    return $self -> self_error("Clone failed: illegal username specified") if(!$safename);
+
     # perform the pre-clone step
-    my $res = `sudo $self->{settings}->{repostools}->{preclone} $username`;
+    my $res = `sudo $self->{settings}->{repostools}->{preclone} $safename`;
     return $self -> self_error("Clone failed: $res") if($res);
 
     # Do the clone itself
-    my $target = path_join($self -> {"settings"} -> {"git"} -> {"webtempdir"}, $username);
+    my $target = path_join($self -> {"settings"} -> {"git"} -> {"webtempdir"}, $safename);
     my $output = eval { Git::Repository -> run(clone => $repository => $target,
                                                { git => "/usr/bin/git", input => "" }); };
     if(my $err = $@) {
@@ -82,11 +85,50 @@ sub clone_repository {
     }
 
     # clone is complete, move the clone into position
-    $res = `sudo $self->{settings}->{repostools}->{postgit} $username`;
+    $res = `sudo $self->{settings}->{repostools}->{postgit} $safename`;
     return $self -> self_error("Clone failed: $res") if($res);
 
     return 1;
 }
 
+
+## @method $ pull_repository($username)
+# Pull updates for the user's repository.
+#
+# @param username   The name of the user cloning the repository.
+# @return true on success, undef on error.
+sub pull_repository {
+    my $self       = shift;
+    my $username   = lc(shift);
+
+    $self -> clear_error();
+
+    my ($safename) = $username =~/^([.\w]+)$/;
+    return $self -> self_error("Pull failed: illegal username specified") if(!$safename);
+
+    # perform the pre-pull step
+    my $res = `sudo $self->{settings}->{repostools}->{prepull} $safename`;
+    return $self -> self_error("/pull failed: $res") if($res);
+
+    # Do the pull
+    my $target = blind_untaint(path_join($self -> {"settings"} -> {"git"} -> {"webtempdir"}, $safename));
+    my $output = eval {
+        my $repo = Git::Repository -> new(work_tree => $target, { git => "/usr/bin/git", input => "" });
+        $repo -> run("pull");
+    };
+
+    if(my $err = $@) {
+        return $self -> self_error("Failed while attempting to clone a private project. Make the project public and try again.")
+            if($err =~ /could not read Username for/);
+
+        return $self -> self_error("Pull failed (git error): $err\n");
+    }
+
+    # clone is complete, move the clone into position
+    $res = `sudo $self->{settings}->{repostools}->{postgit} $safename`;
+    return $self -> self_error("Pull failed: $res") if($res);
+
+    return 1;
+}
 
 1;

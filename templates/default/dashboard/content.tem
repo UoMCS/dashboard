@@ -1,5 +1,5 @@
 <div id="dashboard-core">
-    ***infobox***
+    <div id="infobox">***infobox***</div>
     ***errorbox***
     <ul>
     ***webpart***

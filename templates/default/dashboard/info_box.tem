@@ -4,4 +4,3 @@
         <td class="nbox-text">***message***</td>
     </tr>
 </table>
-<script type="text/javascript">window.addEvent('domready', function() { setTimeout(function() { $('notebox').dissolve() }, 8000); });</script>
