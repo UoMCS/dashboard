@@ -185,6 +185,24 @@ sub _update_repository {
 }
 
 
+sub _require_delete_confirm {
+    my $self = shift;
+
+    return $self -> {"template"} -> load_template("dashboard/web/confirmnuke.tem");
+}
+
+
+sub _delete_repository {
+    my $self = shift;
+    my $user = $self -> {"session"} -> get_user_byid();
+
+    $self -> {"system"} -> {"git"} -> delete_repository($user -> {"username"})
+        or return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"system"} -> {"git"} -> errstr()}));
+
+    return { "return" => { "url" => $self -> build_url(fullurl => 1, block => "dashboard", pathinfo => ["deleted"], api => []) }};
+}
+
+
 # ============================================================================
 #  Interface functions
 
@@ -228,7 +246,9 @@ sub page_display {
     if(defined($apiop)) {
         # API call - dispatch to appropriate handler.
         given($apiop) {
-            when ("pullrepo") { return $self -> api_html_response($self -> _update_repository()); }
+            when ("pullrepo")  { return $self -> api_html_response($self -> _update_repository()); }
+            when ("nukecheck") { return $self -> api_html_response($self -> _require_delete_confirm()); }
+            when ("donuke")    { return $self -> api_response($self -> _delete_repository()); }
             default {
                 return $self -> api_html_response($self -> api_errorhash('bad_op',
                                                                          $self -> {"template"} -> replace_langvar("API_BAD_OP")))

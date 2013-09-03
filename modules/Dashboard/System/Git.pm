@@ -52,6 +52,28 @@ sub user_web_repo_exists {
 }
 
 
+## @method $ delete_repository($username)
+# Delete the repository associated with the specified user.
+#
+# @param username   The name of the user cloning the repository.
+# @return true on success, undef on error.
+sub delete_repository {
+    my $self       = shift;
+    my $username   = lc(shift);
+
+    $self -> clear_error();
+
+    my ($safename) = $username =~/^([.\w]+)$/;
+    return $self -> self_error("Clone failed: illegal username specified") if(!$safename);
+
+    # perform the pre-clone step
+    my $res = `sudo $self->{settings}->{repostools}->{preclone} $safename`;
+    return $self -> self_error("Clone failed: $res") if($res);
+
+    # that should actually be all that is needed...
+    return 1;
+}
+
 
 ## @method $ clone_repository($repository, $username)
 # Clone the specified repository and move it into the user's web space.
