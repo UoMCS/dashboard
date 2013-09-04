@@ -125,13 +125,13 @@ sub _generate_web_publish {
     my $origin = $self -> {"system"} -> {"git"} ->user_web_repo_exists($user -> {"username"});
     if(!$origin) {
         return $self -> {"template"} -> load_template("dashboard/web/norepo.tem", {"***web-repos***" => $args -> {"web-repos"},
-                                                                                   "***form_url***"  => $self -> build_url(block => "dashboard", "pathinfo" => [ "setrepos" ])});
+                                                                                   "***form_url***"  => $self -> build_url(block => "manage", "pathinfo" => [ "setrepos" ])});
     } else {
         return $self -> {"template"} -> load_template("dashboard/web/repo.tem"  , {"***web-repos***" => $origin,
                                                                                    "***web_url***"   => path_join($self -> {"settings"} -> {"git"} -> {"webbaseurl"}, lc($user -> {"username"}),"/"),
-                                                                                   "***pull_url***"  => $self -> build_url(block => "dashboard", "pathinfo" => [ "pullrepos" ]),
-                                                                                   "***nuke_url***"  => $self -> build_url(block => "dashboard", "pathinfo" => [ "nukerepos" ]),
-                                                                                   "***clone_url***" => $self -> build_url(block => "dashboard", "pathinfo" => [ "setrepos" ]),
+                                                                                   "***pull_url***"  => $self -> build_url(block => "manage", "pathinfo" => [ "pullrepos" ]),
+                                                                                   "***nuke_url***"  => $self -> build_url(block => "manage", "pathinfo" => [ "nukerepos" ]),
+                                                                                   "***clone_url***" => $self -> build_url(block => "manage", "pathinfo" => [ "setrepos" ]),
                                                       });
     }
 }
@@ -206,7 +206,7 @@ sub _delete_repository {
     $self -> {"system"} -> {"git"} -> delete_repository($user -> {"username"})
         or return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"system"} -> {"git"} -> errstr()}));
 
-    return { "return" => { "url" => $self -> build_url(fullurl => 1, block => "dashboard", pathinfo => ["deleted"], api => []) }};
+    return { "return" => { "url" => $self -> build_url(fullurl => 1, block => "manage", pathinfo => ["deleted"], api => []) }};
 }
 
 
@@ -224,7 +224,7 @@ sub _change_repository {
     return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $errors}))
         if($errors);
 
-    return { "return" => { "url" => $self -> build_url(fullurl => 1, block => "dashboard", pathinfo => ["changed"], api => []) }};
+    return { "return" => { "url" => $self -> build_url(fullurl => 1, block => "manage", pathinfo => ["changed"], api => []) }};
 }
 
 # ============================================================================
