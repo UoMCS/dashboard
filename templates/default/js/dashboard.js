@@ -239,4 +239,12 @@ window.addEvent('domready', function()
         setTimeout(function() { $('notebox').dissolve() }, 8000);
 
     enable_repos_controls();
+
+    $$('a.rel').each(function(element) {
+                         element.addEvent('click',
+                                          function (e) {
+                                              e.stop();
+                                              window.open(element.href); 
+                                          });
+                     });
 });
