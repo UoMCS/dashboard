@@ -6,7 +6,7 @@ API_BAD_OP   = Unknown API operation requested.
 API_BAD_CALL = Incorrect invocation of an API-only module.
 API_ERROR    = An internal API error has occurred: ***error***
 
-API_ERROR_NOAID = No article ID was included in the API request.
+API_SESSION_GONE = Your session appears to have timed out.<br /><br /><a href="***login_url***">Click here to log in again</a>
 
 # Times for Template::fancy_time
 TIMES_JUSTNOW = just now

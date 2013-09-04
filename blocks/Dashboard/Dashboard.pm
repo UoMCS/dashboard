@@ -262,7 +262,7 @@ sub page_display {
                                                        "***message***"   => $message,
                                                        "***extrahead***" => "",
                                                        "***userbar***"   => $userbar -> block_display("{L_PERMISSION_FAILED_TITLE}"),
-                                                      })
+                                                      });
     }
 
     # Is this an API call, or a normal page operation?

@@ -146,9 +146,14 @@ sub check_login {
     if($self -> {"session"} -> anonymous_session()) {
         $self -> log("error:anonymous", "Redirecting anonymous user to login form");
 
-        print $self -> {"cgi"} -> redirect($self -> build_login_url());
-        exit;
+        if($self -> is_api_operation()) {
+            return $self -> api_html_response($self -> api_errorhash('bad_op',
+                                                                     $self -> {"template"} -> replace_langvar("API_SESSION_GONE", {"***login_url***" => $self -> build_login_url()})))
 
+        } else {
+            print $self -> {"cgi"} -> redirect($self -> build_login_url());
+            exit;
+        }
     # Otherwise, permissions need to be checked
     } elsif(!$self -> check_permission("view")) {
         $self -> log("error:permission", "User does not have perission 'view'");
