@@ -1,5 +1,14 @@
 var updatelock = false;
 
+function form_protect(submit)
+{
+    $(submit).set('disabled', true);
+    $(submit).addClass('disabled');
+
+    return true;
+}
+
+
 function enable_repos_controls()
 {
     if($('pullrepos'))

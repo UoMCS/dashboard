@@ -1,7 +1,11 @@
-WEBSITE_TITLE      = PHP Web Publishing
+WEBSITE_TITLE      = Web Publishing
 WEBSITE_NOREPOS    = You do not currently have a published website. Please enter the URL of a git project to publish as your website in the box below. Note that the project you select <em>must be public</em>: you can not publish private projects.
+WEBSITE_NOTES      = Note that, when your project is published, if it contains a <code>.htaccess</code> file, this file will be overwritten by a system-standard file. In addition, if your project does not already contain a <code>config.inc.php</code> file, the publish mechanism will also generate one in your web directory containing your database credentials.
 WEBSITE_REPOS      = Git project
 WEBSITE_REPOSEG    = https://gitlab.cs.man.ac.uk/your.username/project.git
+
+WEBSITE_REPOS_ERRDESC = You must provide the <code>https://</code> URL of a public git project to use as your website. <code>ssh://</code> URLs are not accepted.
+WEBSITE_NEEDGIT    = The URL of the git project to use as your website must end in <code>.git</code>.
 
 WEBSITE_GOTREPOS   = Your website has been published based on the contents of the project given below. Whenever you update the project, you will need to press the "Update" button below to fetch the latest changes.
 WEBSITE_LOCATION   = Your website is accessible at the following location:

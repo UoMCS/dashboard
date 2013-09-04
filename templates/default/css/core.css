@@ -314,3 +314,9 @@ ul.paginate li.pagebox:last-child {
 
 li.pagebox.active {
 }
+
+code, tt {
+    font-face: fixed;
+    color: #a96300;
+    background: inherit !important;
+}

@@ -46,6 +46,12 @@ sub _validate_repository_fields {
                                                                 });
     $errors .= $self -> {"template"} -> load_template("error/error_item.tem", {"***error***" => $error}) if($error);
 
+    # Force .git on the end of the url
+    if($args -> {"web-repos"}) {
+        $errors .= $self -> {"template"} -> load_template("error/error_item.tem", {"***error***" => "{L_WEBSITE_NEEDGIT}"})
+            unless($args -> {"web-repos"} =~ /\.git$/i);
+    }
+
     return $errors;
 }
 
@@ -90,9 +96,7 @@ sub _set_repository {
     my $error = "";
     my $args  = {};
 
-    if($self -> {"cgi"} -> param("setrepos")) {
-        ($error, $args) = $self -> _validate_repository();
-    }
+    ($error, $args) = $self -> _validate_repository();
 
     return $self -> _generate_dashboard($args, $error);
 }

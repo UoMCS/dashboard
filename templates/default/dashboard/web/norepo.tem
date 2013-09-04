@@ -1,14 +1,15 @@
 <li class="shadowbox">
     <h2>{L_WEBSITE_TITLE}</h2>
     <div class="sbcontent">
-        <form action="***form_url***" id="norepoform" method="post" enctype="multipart/form-data">
+        <form action="***form_url***" id="norepoform" method="post" onsubmit="return form_protect('setbtn');">
             <div>{L_WEBSITE_NOREPOS}</div>
+            <p>{L_WEBSITE_NOTES}</p>
             <dl class="input">
                 <dt><label for="web-repos" class="required">{L_WEBSITE_REPOS}</label></dt>
                 <dd><input class="fillwide" type="text" name="web-repos" id="web-repos" size="100" title="{L_WEBSITE_REPOSEG}" value="***web-repos***" /></dd>
             </dl>
             <div class="submitbox">
-                <input type="submit" class="button blue" value="{L_WEBSITE_SETREPOS}" name="setrepos" />
+                <input type="submit" class="button blue" value="{L_WEBSITE_SETREPOS}" name="setrepos" id="setbtn" />
             </div>
         </form>
     </div>
