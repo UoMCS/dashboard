@@ -1,14 +1,21 @@
 var updatelock = false;
 
+/** Disable the submission button for a form. This is an attempt to
+ *  prevent, or at least reduce the likelihood, of repeat submissions.
+ */
 function form_protect(submit)
 {
     $(submit).set('disabled', true);
     $(submit).addClass('disabled');
+    $('workspinner').fade('in');
 
     return true;
 }
 
 
+/** Enable the buttons controlling features of the repository.
+ *
+ */
 function enable_repos_controls()
 {
     if($('pullrepos'))
@@ -22,6 +29,9 @@ function enable_repos_controls()
 }
 
 
+/** Disable the buttons controlling features of the repository.
+ *
+ */
 function disable_repos_controls()
 {
     $('pullrepos').removeEvents('click').addClass('disabled');
@@ -144,6 +154,81 @@ function do_delete_repos()
 
     return false;
 }
+
+
+function change_repos()
+{
+    if(updatelock) return false;
+    updatelock = true;
+
+    var req = new Request.HTML({ url: api_request_path("dashboard", "setcheck"),
+                                 method: 'post',
+                                 onRequest: function() {
+                                     $('workspinner').fade('in');
+                                     disable_repos_controls();
+                                 },
+                                 onSuccess: function(respTree, respElems, respHTML) {
+                                     var err = respHTML.match(/^<div id="apierror"/);
+
+                                     if(err) {
+                                         $('errboxmsg').set('html', respHTML);
+                                         errbox.open();
+
+                                     // No error, post was edited, the element provided should
+                                     // be the new <li>...
+                                     } else {
+                                         $('poptitle').set('text', respTree[0].get('text'));
+                                         $('popbody').empty().grab(respTree[2]); // will remove respTree[2]!
+                                         popbox.setButtons([{title: respTree[3].get('text'), color: 'red', event: function() { do_change_repos() } },
+                                                            {title: respTree[5].get('text'), color: 'blue', event: function() { popbox.close(); }}]);
+                                         popbox.open();
+                                     }
+                                     $('workspinner').fade('out');
+                                     enable_repos_controls();
+                                     updatelock = false;
+                                 }
+                               });
+    req.post();
+
+    return false;
+}
+
+
+function do_change_repos()
+{
+    if(updatelock) return false;
+    updatelock = true;
+
+    var req = new Request({ url: api_request_path("dashboard", "dochange"),
+                            method: 'post',
+                            onRequest: function() {
+                                $('workspinner').fade('in');
+                                disable_repos_controls();
+                            },
+                            onSuccess: function(respText, respXML) {
+                                var err = respXML.getElementsByTagName("error")[0];
+
+                                if(err) {
+                                    $('errboxmsg').set('html', '<p class="error">'+err.getAttribute('info')+'</p>');
+                                    popbox.close();
+                                    errbox.open();
+                                } else {
+                                    var res = respXML.getElementsByTagName("return")[0];
+                                    var rup = res.getAttribute("url");
+
+                                    if(rup)
+                                        location.href = rup;
+                                }
+                                $('workspinner').fade('out');
+                                enable_repos_controls();
+                                updatelock = false;
+                            }
+                          });
+    req.post({'web-repos': $('web-repos').get('value')});
+
+    return false;
+}
+
 
 window.addEvent('domready', function()
 {

@@ -9,6 +9,7 @@
                 <dd><input class="fillwide" type="text" name="web-repos" id="web-repos" size="100" title="{L_WEBSITE_REPOSEG}" value="***web-repos***" /></dd>
             </dl>
             <div class="submitbox">
+                <img class="workspin" id="workspinner" src="{V_[templatepath]}images/spinner.gif" width="16" height="16" alt="working" />
                 <input type="submit" class="button blue" value="{L_WEBSITE_SETREPOS}" name="setrepos" id="setbtn" />
             </div>
         </form>

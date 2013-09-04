@@ -81,8 +81,7 @@ sub _validate_repository {
                                                                                                                                              })
                                                           }), $args);
 
-    print $self -> {"cgi"} -> redirect($self -> build_url(pathinfo => ["cloned"]));
-    exit;
+    return ($errors, $args);
 }
 
 
@@ -97,6 +96,10 @@ sub _set_repository {
     my $args  = {};
 
     ($error, $args) = $self -> _validate_repository();
+    if(!$error) {
+        print $self -> {"cgi"} -> redirect($self -> build_url(pathinfo => ["cloned"]));
+        exit;
+    }
 
     return $self -> _generate_dashboard($args, $error);
 }
@@ -207,6 +210,23 @@ sub _delete_repository {
 }
 
 
+sub _require_change_confirm {
+    my $self = shift;
+
+    return $self -> {"template"} -> load_template("dashboard/web/confirmchange.tem");
+}
+
+
+sub _change_repository {
+    my $self = shift;
+
+    my ($errors, $args) = $self -> _validate_repository();
+    return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $errors}))
+        if($errors);
+
+    return { "return" => { "url" => $self -> build_url(fullurl => 1, block => "dashboard", pathinfo => ["changed"], api => []) }};
+}
+
 # ============================================================================
 #  Interface functions
 
@@ -253,6 +273,8 @@ sub page_display {
             when ("pullrepo")  { return $self -> api_html_response($self -> _update_repository()); }
             when ("nukecheck") { return $self -> api_html_response($self -> _require_delete_confirm()); }
             when ("donuke")    { return $self -> api_response($self -> _delete_repository()); }
+            when ("setcheck")  { return $self -> api_html_response($self -> _require_change_confirm()); }
+            when ("dochange")  { return $self -> api_response($self -> _change_repository()); }
             default {
                 return $self -> api_html_response($self -> api_errorhash('bad_op',
                                                                          $self -> {"template"} -> replace_langvar("API_BAD_OP")))
@@ -269,6 +291,8 @@ sub page_display {
             given($pathinfo[0]) {
                 when("setrepos") { ($title, $content, $extrahead) = $self -> _set_repository(); }
                 when("cloned")   { ($title, $content, $extrahead) = $self -> _generate_dashboard(undef, undef, "{L_WEBSITE_CLONE_SUCCESS}"); }
+                when("deleted")  { ($title, $content, $extrahead) = $self -> _generate_dashboard(undef, undef, "{L_WEBSITE_NUKE_SUCCESS}"); }
+                when("changed")  { ($title, $content, $extrahead) = $self -> _generate_dashboard(undef, undef, "{L_WEBSITE_CHANGE_SUCCESS}"); }
 
                 default {
                     ($title, $content, $extrahead) = $self -> _generate_dashboard();

@@ -1,0 +1,9 @@
+<div>{L_WEBSITE_CONFIRM}</div>
+<div>{L_WEBSITE_CHANGE_CONFIRM}
+    <dl class="input">
+        <dt><label for="web-repos" class="required">{L_WEBSITE_REPOS}</label></dt>
+        <dd><input type="text" name="web-repos" id="web-repos" size="100" title="{L_WEBSITE_REPOSEG}" value="" /></dd>
+    </dl>
+</div>
+<div>{L_WEBSITE_CHANGEREPOS}</div>
+<div>{L_CANCEL_OPTION}</div>

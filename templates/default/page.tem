@@ -38,6 +38,7 @@
 // <![CDATA[
 window.addEvent('domready', function() {
     errbox = new LightFace({title: '{L_PAGE_ERROR}',
+                            width: '800px',
                             draggable: false,
                             overlayAll: true,
                             buttons: [
@@ -51,6 +52,7 @@ window.addEvent('domready', function() {
                             content: '<div id="popbody"></div>',
                             zIndex: 8001,
                             pad: 200,
+                            width: '800px',
     });
 });
 // ]]>

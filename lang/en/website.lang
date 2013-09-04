@@ -15,11 +15,13 @@ WEBSITE_PULLREPOS   = Update
 WEBSITE_NUKEREPOS   = Delete website
 WEBSITE_CHANGEREPOS = Change project
 
-WEBSITE_CLONE_FAIL    = Publish failed. The system can not publish the selected repository, the follwing errors were encountered:
-WEBSITE_CLONE_SUCCESS = Publish successful! The selected project has been cloned as your web directory and is now usable.
+WEBSITE_CLONE_FAIL     = Publish failed. The system can not publish the selected repository, the follwing errors were encountered:
+WEBSITE_CLONE_SUCCESS  = Publish successful! The selected project has been cloned as your web directory and is now usable.
+WEBSITE_PULL_SUCCESS   = Update successful. Your website is now using the latest version of your project.
+WEBSITE_NUKE_SUCCESS   = Delete successful. Your website has been removed from the server.
+WEBSITE_CHANGE_SUCCESS = Project change successful. Your website is now using the newly selected project.
 
-WEBSITE_PULL_SUCCESS  = Update successful. Your website is now using the latest version of your project.
 
-WEBSITE_NUKE_CONFIRM  = Are you sure that you want to delete your web tree? You can create a new one by entering a new project repository at a later time.
-
+WEBSITE_NUKE_CONFIRM   = Are you sure that you want to delete your web tree? You can create a new one by entering a new project repository at a later time.
+WEBSITE_CHANGE_CONFIRM = Are you sure that you want to change the project used as the source of your website? Changing the project will entirely replace your existing website. If you want to continue, please enter the URL of the project to use as your website below.
 WEBSITE_CONFIRM  = Confirmation requested.
