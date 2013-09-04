@@ -79,10 +79,10 @@ if(-e $tempdir) {
 
         # kill write on important files
         my ($user, $grp) = ($settings -> {"git"} -> {"webuser"}, $settings -> {"git"} -> {"webgroup"});
-        my $res = `/usr/bin/chown -R $user:$grp '$htaccess' '$gitdir' 2>&1`;
+        my $res = `/bin/chown -R $user:$grp '$htaccess' '$gitdir' 2>&1`;
         fatal_error("Unable to set owner: $res") if($res);
 
-        $res = `/usr/bin/chmod -R g-w,u-w '$htaccess' '$gitdir' 2>&1`;
+        $res = `/bin/chmod -R g-w,u-w '$htaccess' '$gitdir' 2>&1`;
         fatal_error("Unable to complete setup: $res") if($res);
 
         fatal_error("User directory move failed: $!")

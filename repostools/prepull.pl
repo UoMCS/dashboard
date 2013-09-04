@@ -58,7 +58,7 @@ if(-e $userdir) {
             my $gitdir   = path_join($tempdir, ".git");
 
             # Add back the write perms
-            `/usr/bin/chmod -R u+w,g+w '$htaccess' '$gitdir'`;
+            `/bin/chmod -R u+w,g+w '$htaccess' '$gitdir'`;
 
             # The .htaccess can go, if it exists
             unlink($htaccess);

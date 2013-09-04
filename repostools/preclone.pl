@@ -50,7 +50,7 @@ fatal_error("Username is not valid")
 my $userdir = path_join($settings -> {"git"} -> {"webbasedir"}, $username);
 
 if(-e $userdir) {
-    my $res = `rm -rf $userdir`;
+    my $res = `/bin/rm -rf $userdir`;
     fatal_error("Unable to remove user directory: $res")
         if($res);
 }
@@ -58,7 +58,7 @@ if(-e $userdir) {
 my $tempdir = path_join($settings -> {"git"} -> {"webtempdir"}, $username);
 
 if(-e $tempdir) {
-    my $res = `rm -rf $tempdir`;
+    my $res = `/bin/rm -rf $tempdir`;
     fatal_error("Unable to remove user temp directory: $res")
         if($res);
 }
