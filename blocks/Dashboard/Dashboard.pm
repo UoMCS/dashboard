@@ -242,29 +242,6 @@ sub page_display {
     my $error = $self -> check_login();
     return $error if($error);
 
-    # Exit with a permission error unless the user has permission to use the system
-    if(!$self -> check_permission("view")) {
-        $self -> log("error:permission", "User does not have permission to view the dashboard");
-
-        my $userbar = $self -> {"module"} -> load_module("Dashboard::Userbar");
-        my $message = $self -> {"template"} -> message_box("{L_PERMISSION_FAILED_TITLE}",
-                                                           "error",
-                                                           "{L_PERMISSION_FAILED_SUMMARY}",
-                                                           "{L_PERMISSION_USER_PERM}",
-                                                           undef,
-                                                           "errorcore",
-                                                           [ {"message" => $self -> {"template"} -> replace_langvar("SITE_CONTINUE"),
-                                                              "colour"  => "blue",
-                                                              "action"  => "location.href='".$self -> build_url(block => "compose", pathinfo => [])."'"} ]);
-
-        return $self -> {"template"} -> load_template("error/general.tem",
-                                                      {"***title***"     => "{L_PERMISSION_FAILED_TITLE}",
-                                                       "***message***"   => $message,
-                                                       "***extrahead***" => "",
-                                                       "***userbar***"   => $userbar -> block_display("{L_PERMISSION_FAILED_TITLE}"),
-                                                      });
-    }
-
     # Is this an API call, or a normal page operation?
     my $apiop = $self -> is_api_operation();
     if(defined($apiop)) {
