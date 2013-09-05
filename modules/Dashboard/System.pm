@@ -30,6 +30,7 @@ use Dashboard::System::Roles;
 use Dashboard::System::Tags;
 use Dashboard::System::UserDataBridge;
 use Dashboard::System::Git;
+use Dashboard::System::Databases;
 
 ## @method $ init(%args)
 # Initialise the Dashboard System's references to other system objects. This
@@ -60,6 +61,11 @@ sub init {
                                                      settings => $self -> {"settings"},
                                                      logger   => $self -> {"logger"})
         or return $self -> self_error("Git init failed: ".$Webperl::SystemModule::errstr);
+
+    $self -> {"databases"} = Dashboard::System::Databases -> new(dbh      => $self -> {"dbh"},
+                                                                 settings => $self -> {"settings"},
+                                                                 logger   => $self -> {"logger"})
+        or return $self -> self_error("Databases init failed: ".$Webperl::SystemModule::errstr);
 
     $self -> {"metadata"} = Dashboard::System::Metadata -> new(dbh      => $self -> {"dbh"},
                                                               settings => $self -> {"settings"},

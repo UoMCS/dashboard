@@ -137,6 +137,29 @@ sub _generate_web_publish {
 }
 
 
+## @method private $ _generate_database($user, $args)
+# Generate a block containing the information about/options for the user
+# related to their database and/or group databases.
+#
+# @param user A reference to the user's data hash.
+# @param args A reference to a hash containing arguments to use in the
+#             form fields as needed.
+# @return A string containing the web publishing block.
+sub _generate_database {
+    my $self = shift;
+    my $user = shift;
+    my $args = shift;
+
+    # Does the user have a database?
+    my $user_hasdb = $self -> {"system"} -> {"databases"} ->user_database_exists($user -> {"username"});
+    if(!$user_hasdb) {
+        return $self -> {"template"} -> load_template("dashboard/db/nodb.tem", {"***form_url***"  => $self -> build_url(block => "manage", "pathinfo" => [ "newdb" ])});
+    } else {
+
+    }
+}
+
+
 # @method private @ _generate_dashboard($args, $error, $message)
 # Generate the page content for a dashboard page.
 #
@@ -157,6 +180,9 @@ sub _generate_dashboard {
     # Build the web publish block
     my $webblock = $self -> _generate_web_publish($user, $args);
 
+    # Build the web publish block
+    my $dbblock = $self -> _generate_database($user, $args);
+
     # Wrap the error in an error box, if needed.
     $error = $self -> {"template"} -> load_template("error/error_box.tem", {"***message***" => $error})
         if($error);
@@ -169,6 +195,7 @@ sub _generate_dashboard {
             $self -> {"template"} -> load_template("dashboard/content.tem", {"***errorbox***" => $error,
                                                                              "***infobox***"  => $message,
                                                                              "***webpart***"  => $webblock,
+                                                                             "***dbpart***"   => $dbblock,
                                                    }));
 }
 
@@ -188,8 +215,7 @@ sub _update_repository {
     $self -> {"system"} -> {"git"} -> pull_repository($user -> {"username"})
         or return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"system"} -> {"git"} -> errstr()}));
 
-    return $self -> {"template"}
--> load_template("dashboard/info_box.tem", {"***message***" => "{L_WEBSITE_PULL_SUCCESS}"});
+    return $self -> {"template"} -> load_template("dashboard/info_box.tem", {"***message***" => "{L_WEBSITE_PULL_SUCCESS}"});
 }
 
 

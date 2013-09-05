@@ -1,0 +1,6 @@
+DATABASE_TITLE    = MySQL Database account
+DATABASE_NODB     = You have not yet created a MySQL database account. In order to create your account, please enter a password to use in the form below. <strong>Do not</strong> use your University central account password, or a password you use for any important systems as your database password. Your database credentials will be written to a <code>config.inc.php</code> file added to the root of your web directory,
+DATABASE_PASSWORD = Database password
+DATABASE_PASSCONF = Confirm password
+
+DATABASE_MAKEDB   = Create database
