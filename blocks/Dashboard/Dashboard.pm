@@ -176,7 +176,7 @@ sub _generate_dashboard {
 # ============================================================================
 #  API functions
 
-## @method $ _update_repository()
+## @method private $ _update_repository()
 # An API function that triggers a git pull on the user's repository.
 #
 # @return Either a string containing a block of html to send back to the user,
@@ -188,10 +188,16 @@ sub _update_repository {
     $self -> {"system"} -> {"git"} -> pull_repository($user -> {"username"})
         or return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"system"} -> {"git"} -> errstr()}));
 
-    return $self -> {"template"} -> load_template("dashboard/info_box.tem", {"***message***" => "{L_WEBSITE_PULL_SUCCESS}"});
+    return $self -> {"template"}
+-> load_template("dashboard/info_box.tem", {"***message***" => "{L_WEBSITE_PULL_SUCCESS}"});
 }
 
 
+## @method private $ _require_delete_confirm()
+# An API function that generates a confirmation request to show to the user
+# before deleting the user's website.
+#
+# @return A string containing a block of HTML to return to the user.
 sub _require_delete_confirm {
     my $self = shift;
 
@@ -199,6 +205,13 @@ sub _require_delete_confirm {
 }
 
 
+## @method private $ _delete_repository()
+# Delete the repository that forms the user's website. This will remove the
+# user's web directory entirely, and can not be undone.
+#
+# @return A hash containing an API response. If the delete succeeded, the response
+#         contains the URL to refirect the user to, otherwise it is an error to send
+#         to the user.
 sub _delete_repository {
     my $self = shift;
     my $user = $self -> {"session"} -> get_user_byid();
@@ -210,6 +223,11 @@ sub _delete_repository {
 }
 
 
+## @method private $ _require_change_confirm()
+# An API function that generates a confirmation request to show to the user
+# before changing the repostitory used as the source of the user's website.
+#
+# @return A string containing a block of HTML to return to the user.
 sub _require_change_confirm {
     my $self = shift;
 
@@ -217,15 +235,25 @@ sub _require_change_confirm {
 }
 
 
+## @method private $ _change_repository()
+# Update the repository used as the source of the user's website. This will check
+# that the value set by the user for the repository appears to be valid, and if
+# so it will remove the user's current web directory and create a new one based
+# on the specified repository.
+#
+# @return A hash containing an API response. If the delete succeeded, the response
+#         contains the URL to refirect the user to, otherwise it is an error to send
+#         to the user.
 sub _change_repository {
     my $self = shift;
 
     my ($errors, $args) = $self -> _validate_repository();
-    return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $errors}))
+    return $self -> api_errorhash("validation_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $errors}))
         if($errors);
 
     return { "return" => { "url" => $self -> build_url(fullurl => 1, block => "manage", pathinfo => ["changed"], api => []) }};
 }
+
 
 # ============================================================================
 #  Interface functions

@@ -4,7 +4,7 @@ SITE_CONTINUE = Continue
 
 API_BAD_OP   = Unknown API operation requested.
 API_BAD_CALL = Incorrect invocation of an API-only module.
-API_ERROR    = An internal API error has occurred: ***error***
+API_ERROR    = An API error has occurred: ***error***
 
 API_SESSION_GONE = Your session appears to have timed out.<br /><br /><a href="***login_url***">Click here to log in again</a>
 
