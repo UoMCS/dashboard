@@ -42,6 +42,29 @@ function disable_repos_controls()
 }
 
 
+/** Enable the buttons controlling features of the database.
+ *
+ */
+function enable_database_controls()
+{
+    if($('newdbpass'))
+        $('newdbpass').addEvent('click', function() { change_password(); }).removeClass('disabled');
+
+    if($('nukedb'))
+        $('nukedb').addEvent('click', function() { delete_database(); }).removeClass('disabled');
+}
+
+
+/** Disable the buttons controlling features of the database.
+ *
+ */
+function disable_database_controls()
+{
+    $('newdbpass').removeEvents('click').addClass('disabled');
+    $('nukedb').removeEvents('click').addClass('disabled');
+}
+
+
 function update_repos()
 {
     if(updatelock) return false;
@@ -232,6 +255,154 @@ function do_change_repos()
 }
 
 
+function change_password()
+{
+    if(updatelock) return false;
+    updatelock = true;
+
+    var req = new Request.HTML({ url: api_request_path("dashboard", "dbsetcheck"),
+                                 method: 'post',
+                                 onRequest: function() {
+                                     $('dbworkspinner').fade('in');
+                                     disable_database_controls();
+                                 },
+                                 onSuccess: function(respTree, respElems, respHTML) {
+                                     var err = respHTML.match(/^<div id="apierror"/);
+
+                                     if(err) {
+                                         $('errboxmsg').set('html', respHTML);
+                                         errbox.open();
+
+                                     // No error, post was edited, the element provided should
+                                     // be the new <li>...
+                                     } else {
+                                         $('poptitle').set('text', respTree[0].get('text'));
+                                         $('popbody').empty().grab(respTree[2]); // will remove respTree[2]!
+                                         popbox.setButtons([{title: respTree[3].get('text'), color: 'blue', event: function() { do_change_password() } },
+                                                            {title: respTree[5].get('text'), color: 'blue', event: function() { popbox.close(); }}]);
+                                         popbox.open();
+                                     }
+                                     $('dbworkspinner').fade('out');
+                                     enable_database_controls();
+                                     updatelock = false;
+                                 }
+                               });
+    req.post();
+
+    return false;
+}
+
+
+function do_change_password()
+{
+    if(updatelock) return false;
+    updatelock = true;
+
+    var req = new Request({ url: api_request_path("dashboard", "dodbchange"),
+                            method: 'post',
+                            onRequest: function() {
+                                $('dbworkspinner').fade('in');
+                                disable_database_controls();
+                            },
+                            onSuccess: function(respText, respXML) {
+                                var err = respXML.getElementsByTagName("error")[0];
+
+                                if(err) {
+                                    $('errboxmsg').set('html', '<p class="error">'+err.getAttribute('info')+'</p>');
+                                    popbox.close();
+                                    errbox.open();
+                                } else {
+                                    var res = respXML.getElementsByTagName("return")[0];
+                                    var rup = res.getAttribute("url");
+
+                                    if(rup)
+                                        location.href = rup;
+                                }
+                                $('dbworkspinner').fade('out');
+                                enable_database_controls();
+                                updatelock = false;
+                            }
+                          });
+    req.post({'db-pass': $('db-pass').get('value'),
+              'db-conf': $('db-conf').get('value')});
+
+    return false;
+}
+
+
+function delete_database()
+{
+    if(updatelock) return false;
+    updatelock = true;
+
+    var req = new Request.HTML({ url: api_request_path("dashboard", "dbnukecheck"),
+                                 method: 'post',
+                                 onRequest: function() {
+                                     $('dbworkspinner').fade('in');
+                                     disable_database_controls();
+                                 },
+                                 onSuccess: function(respTree, respElems, respHTML) {
+                                     var err = respHTML.match(/^<div id="apierror"/);
+
+                                     if(err) {
+                                         $('errboxmsg').set('html', respHTML);
+                                         errbox.open();
+
+                                     // No error, post was edited, the element provided should
+                                     // be the new <li>...
+                                     } else {
+                                         $('poptitle').set('text', respTree[0].get('text'));
+                                         $('popbody').empty().grab(respTree[2]); // will remove respTree[2]!
+                                         popbox.setButtons([{title: respTree[3].get('text'), color: 'red', event: function() { do_delete_database() } },
+                                                            {title: respTree[5].get('text'), color: 'blue', event: function() { popbox.close(); }}]);
+                                         popbox.open();
+                                     }
+                                     $('dbworkspinner').fade('out');
+                                     enable_database_controls();
+                                     updatelock = false;
+                                 }
+                               });
+    req.post();
+
+    return false;
+}
+
+function do_delete_database()
+{
+    if(updatelock) return false;
+    updatelock = true;
+
+    var req = new Request({ url: api_request_path("dashboard", "dodbnuke"),
+                            method: 'post',
+                            onRequest: function() {
+                                $('dbworkspinner').fade('in');
+                                disable_database_controls();
+                            },
+                            onSuccess: function(respText, respXML) {
+                                var err = respXML.getElementsByTagName("error")[0];
+
+                                if(err) {
+                                    $('errboxmsg').set('html', '<p class="error">'+err.getAttribute('info')+'</p>');
+                                    popbox.close();
+                                    errbox.open();
+                                } else {
+                                    var res = respXML.getElementsByTagName("return")[0];
+                                    var rup = res.getAttribute("url");
+
+                                    if(rup)
+                                        location.href = rup;
+                                }
+                                $('dbworkspinner').fade('out');
+                                enable_database_controls();
+                                updatelock = false;
+                            }
+                          });
+    req.post();
+
+    return false;
+}
+
+
 window.addEvent('domready', function()
 {
     if($('web-repos'))
@@ -241,6 +412,7 @@ window.addEvent('domready', function()
         setTimeout(function() { $('notebox').dissolve() }, 8000);
 
     enable_repos_controls();
+    enable_database_controls();
 
     $$('a.rel').each(function(element) {
                          element.addEvent('click',

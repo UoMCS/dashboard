@@ -12,3 +12,15 @@ DATABASE_PASSMATCH = The specified password and confirmation password do not mat
 DATABASE_FAIL      = Unable to set up your database account. The following errors were encountered:
 
 DATABASE_SETUP_SUCCESS = Your database account has been created successfully.
+
+DATABASE_GOTDATABASE     = Your database account and personal database appear to be present, and the connection information you need to connect to your database is shown below. Note that, with the exception of the host name, the information is case sensitive:
+DATABASE_PASSWORD_COPOUT = &lt;the password you set&gt;
+DATABASE_LOCATION        = This information has been written to the <code>config.inc.php</code> file in your web directory, if you have it set up. You can manage your database through the web using the phpMyAdmin system here:
+DATABASE_NEWPASS         = Change database password
+DATABASE_NUKE            = Delete database
+
+DATABASE_CHANGE_CONFIRM  = Are you sure that you want to change the password set for your database account? If so, please fill in the form below and click "Change database password"
+DATABASE_CHANGE_SUCCESS  = Update successful. Your database password has been changed.
+
+DATABASE_NUKE_CONFIRM    = Are you <em>absolutely</em> sure that you want to delete your database account? If you do this, all data currently in your database will be permanently erased and can not be recovered, and you will need to create a new account if you need your database in the future.<br /><br />Note that the status of any group databases will not be affected if you delete your account.
+DATABASE_NUKE_SUCCESS    = Delete successful. Your database and database user account have been deleted.

@@ -73,6 +73,8 @@ sub _validate_repository {
                                                                             "***errors***"  => $errors}), $args)
         if($errors);
 
+    $self -> log("repository", "Cloning ".$args -> {"web-repos"}." to ".$user -> {"username"});
+
     # The respository appears to be valid, do the clone
     $self -> {"system"} -> {"git"} -> clone_repository($args -> {"web-repos"}, $user -> {"username"})
         or return ($self -> {"template"} -> load_template("error/error_list.tem", {"***message***" => "{L_WEBSITE_CLONE_FAIL}",
@@ -157,6 +159,8 @@ sub _validate_database {
                                                                             "***errors***"  => $errors}), $args)
         if($errors);
 
+    $self -> log("database", "Setting up account for user ".$user -> {"username"});
+
     # Files are valid, do the create/reset
     $self -> {"system"} -> {"databases"} -> setup_user_account($user, $args -> {"db-pass"})
         or return ($self -> {"template"} -> load_template("error/error_list.tem", {"***message***" => "{L_DATABASE_FAIL}",
@@ -238,7 +242,9 @@ sub _generate_database {
     if(!$user_hasdb) {
         return $self -> {"template"} -> load_template("dashboard/db/nodb.tem", {"***form_url***"  => $self -> build_url(block => "manage", "pathinfo" => [ "newdb" ])});
     } else {
-
+        return $self -> {"template"} -> load_template("dashboard/db/db.tem"  , {"***username***" => lc($user -> {"username"}),
+                                                                                "***password***" => "{L_DATABASE_PASSWORD_COPOUT}",
+                                                      });
     }
 }
 
@@ -295,6 +301,8 @@ sub _update_repository {
     my $self = shift;
     my $user = $self -> {"session"} -> get_user_byid();
 
+    $self -> log("repository", "Pulling repository for user ".$user -> {"username"});
+
     $self -> {"system"} -> {"git"} -> pull_repository($user -> {"username"})
         or return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"system"} -> {"git"} -> errstr()}));
 
@@ -309,6 +317,8 @@ sub _update_repository {
 # @return A string containing a block of HTML to return to the user.
 sub _require_repository_delete_confirm {
     my $self = shift;
+
+    $self -> log("repository", "Delete confirmation requested.");
 
     return $self -> {"template"} -> load_template("dashboard/web/confirmnuke.tem");
 }
@@ -325,6 +335,8 @@ sub _delete_repository {
     my $self = shift;
     my $user = $self -> {"session"} -> get_user_byid();
 
+    $self -> log("repository", "Deleting repository for user ".$user -> {"username"});
+
     $self -> {"system"} -> {"git"} -> delete_repository($user -> {"username"})
         or return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"system"} -> {"git"} -> errstr()}));
 
@@ -337,8 +349,10 @@ sub _delete_repository {
 # before changing the repostitory used as the source of the user's website.
 #
 # @return A string containing a block of HTML to return to the user.
-sub _require_repositorychange_confirm {
+sub _require_repository_change_confirm {
     my $self = shift;
+
+    $self -> log("repository", "Change confirmation requested.");
 
     return $self -> {"template"} -> load_template("dashboard/web/confirmchange.tem");
 }
@@ -350,17 +364,85 @@ sub _require_repositorychange_confirm {
 # so it will remove the user's current web directory and create a new one based
 # on the specified repository.
 #
-# @return A hash containing an API response. If the delete succeeded, the response
+# @return A hash containing an API response. If the change succeeded, the response
 #         contains the URL to refirect the user to, otherwise it is an error to send
 #         to the user.
 sub _change_repository {
     my $self = shift;
 
+    $self -> log("repository", "Changing repository for user.");
+
     my ($errors, $args) = $self -> _validate_repository();
     return $self -> api_errorhash("validation_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $errors}))
         if($errors);
 
-    return { "return" => { "url" => $self -> build_url(fullurl => 1, block => "manage", pathinfo => ["sebset"], api => []) }};
+    return { "return" => { "url" => $self -> build_url(fullurl => 1, block => "manage", pathinfo => ["webset"], api => []) }};
+}
+
+
+# @method private $ _require_database_change_confirm()
+# An API function that generates a confirmation request to show to the user
+# to request the new password for their database.
+#
+# @return A string containing a block of HTML to return to the user.
+sub _require_database_change_confirm {
+    my $self = shift;
+
+    $self -> log("database", "Password change confirmation requested.");
+
+    return $self -> {"template"} -> load_template("dashboard/db/confirmchange.tem");
+}
+
+
+## @method private $ _change_database()
+# Update the password associated with the user's account in the database.
+#
+# @return A hash containing an API response. If the change succeeded, the response
+#         contains the URL to refirect the user to, otherwise it is an error to send
+#         to the user.
+sub _change_database {
+    my $self = shift;
+
+    $self -> log("database", "Changing password for user.");
+
+    my ($errors, $args) = $self -> _validate_database();
+    return $self -> api_errorhash("validation_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $errors}))
+        if($errors);
+
+    return { "return" => { "url" => $self -> build_url(fullurl => 1, block => "manage", pathinfo => ["dbset"], api => []) }};
+}
+
+
+# @method private $ _require_database_delete_confirm()
+# An API function that generates a confirmation request to show to the user
+# tbefore deleting their account and database.
+#
+# @return A string containing a block of HTML to return to the user.
+sub _require_database_delete_confirm {
+    my $self = shift;
+
+    $self -> log("database", "Delete confirmation requested.");
+
+    return $self -> {"template"} -> load_template("dashboard/db/confirmnuke.tem");
+}
+
+
+## @method private $ _delete_database()
+# Delete the user's database.
+#
+# @return A hash containing an API response. If the delete succeeded, the response
+#         contains the URL to refirect the user to, otherwise it is an error to send
+#         to the user.
+sub _delete_database {
+    my $self = shift;
+    my $user = $self -> {"session"} -> get_user_byid();
+
+    $self -> log("database", "Deleting database for user ".$user -> {"username"});
+
+    $self -> {"system"} -> {"databases"} -> delete_user_account($user -> {"username"})
+        or return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"system"} -> {"databases"} -> errstr()}));
+
+    return { "return" => { "url" => $self -> build_url(fullurl => 1, block => "manage", pathinfo => ["dbdel"], api => []) }};
 }
 
 
@@ -395,6 +477,8 @@ sub page_display {
             when ("dbnukecheck")  { return $self -> api_html_response($self -> _require_database_delete_confirm()); }
             when ("dbsetcheck")   { return $self -> api_html_response($self -> _require_database_change_confirm()); }
 
+            when ("dodbchange")   { return $self -> api_response($self -> _change_database()); }
+            when ("dodbnuke")     { return $self -> api_response($self -> _delete_database()); }
             default {
                 return $self -> api_html_response($self -> api_errorhash('bad_op',
                                                                          $self -> {"template"} -> replace_langvar("API_BAD_OP")))
@@ -418,6 +502,8 @@ sub page_display {
                 # Database operations
                 when("newdb")    { ($title, $content, $extrahead) = $self -> _make_database(); }
                 when("newdbok")  { ($title, $content, $extrahead) = $self -> _generate_dashboard(undef, undef, "{L_DATABASE_SETUP_SUCCESS}"); }
+                when("dbset")    { ($title, $content, $extrahead) = $self -> _generate_dashboard(undef, undef, "{L_DATABASE_CHANGE_SUCCESS}"); }
+                when("dbdel")    { ($title, $content, $extrahead) = $self -> _generate_dashboard(undef, undef, "{L_DATABASE_NUKE_SUCCESS}"); }
 
                 default {
                     ($title, $content, $extrahead) = $self -> _generate_dashboard();

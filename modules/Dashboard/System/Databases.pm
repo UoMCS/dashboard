@@ -51,6 +51,29 @@ sub new {
 
 
 # ============================================================================
+#  Checking code
+
+## @method $ safe_username($username)
+# Determine whether the specified username is safe, return an untainted version
+# if it is.
+#
+# @param username The name of the user to check.
+# @return A lowercase, untainted, safe version of the name on success, undef
+#         on error.
+sub safe_username {
+    my $self     = shift;
+    my $username = lc(shift);
+
+    $self -> clear_error();
+
+    my ($safename) = $username =~ /^([-\w]+)$/;
+    return $self -> self_error("Username contains illegal characters") if(!$safename);
+
+    return $safename;
+}
+
+
+# ============================================================================
 #  Database handling
 
 ## @method $ user_database_exists($username)
@@ -61,7 +84,7 @@ sub new {
 # @return True if the user's database exists, false if it does not, undef on error.
 sub user_database_exists {
     my $self     = shift;
-    my $username = lc(shift);
+    my $username = $self -> safe_username(shift) || return undef;
 
     $self -> clear_error();
 
@@ -94,7 +117,7 @@ sub setup_user_account {
     my $self     = shift;
     my $user     = shift;
     my $password = shift;
-    my $username = lc($user ->{"username"});
+    my $username = $self -> safe_username($user -> {"username"}) || return undef;
 
     $self -> clear_error();
 
@@ -122,7 +145,7 @@ sub setup_user_account {
 # @return true on success, undef on error
 sub create_user_account {
     my $self     = shift;
-    my $username = lc(shift);
+    my $username = $self -> safe_username(shift) || return undef;
     my $password = shift;
 
     $self -> clear_error();
@@ -144,12 +167,36 @@ sub create_user_account {
 # @return true on success, undef on error.
 sub create_user_database {
     my $self     = shift;
-    my $username = lc(shift);
+    my $username = $self -> safe_username(shift) || return undef;
 
     $self -> clear_error();
 
     foreach my $host (@{$self -> {"allowed_hosts"}}) {
         $self -> _create_database($username, $host)
+            or return undef;
+    }
+
+    return 1;
+}
+
+
+# @method $ delete_user_account($username)
+# Delete the user's database and accounts in the system. This is a no-way-back
+# process, so make sure it gets confirmed!
+#
+# @param username The name of the user to nuke the account for.
+# @return true on succes, undef on error.
+sub delete_user_account {
+    my $self     = shift;
+    my $username = $self -> safe_username(shift) || return undef;
+
+    $self -> clear_error();
+
+    $self -> _delete_database($username)
+        or return undef;
+
+    foreach my $host (@{$self -> {"allowed_hosts"}}) {
+        $self -> _delete_user($username, $host)
             or return undef;
     }
 
@@ -303,11 +350,35 @@ sub _create_update_user {
 }
 
 
+## @method private $ _delete_user($username, $host)
+# Delete the specified user from the system, revoking any privileges the user
+# may hold.
+#
+# @param username The name of the user to delete. Must have been passed through
+#                 safe_username() first!
+# @param host     The host to use for the user.
+# @return true on success, undef on error.
+sub _delete_user {
+    my $self     = shift;
+    my $username = shift;
+    my $host     = shift;
+
+    $self -> clear_error();
+
+    my $nukeh = $self -> {"user_dbh"} -> prepare('DROP USER ?@?');
+    $nukeh -> execute($username, $host)
+        or return $self -> self_error("Unable to delete user account: ".$self -> {"user_dbh"} -> errstr());
+
+    return 1;
+}
+
+
 ## @method private $ _create_database($username, $host)
 # Create a database for the specified user if it does not exist, and
 # grant access to the user from the specified host.
 #
 # @param username The name of the user account to create the database for.
+#                 Must have been passed through safe_username() first!
 # @param host     The host to use for the user.
 # @return true on success, undef on error.
 sub _create_database {
@@ -321,7 +392,7 @@ sub _create_database {
     if(!$self -> _user_database_exists($username)) {
         # Create the database...
         my $newh = $self -> {"user_dbh"} -> prepare("CREATE DATABASE IF NOT EXISTS `$username`
-                                                 DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci");
+                                                     DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci");
         $newh -> execute()
             or return $self -> self_error("Unable to create database for $username: ".$self -> {"user_dbh"} -> errstr);
 
@@ -334,6 +405,25 @@ sub _create_database {
     my $accessh = $self -> {"user_dbh"} -> prepare("GRANT ALL PRIVILEGES ON `$username`.* TO ?\@?");
     $accessh -> execute($username, $host)
         or return $self -> self_error("Unable to grant access to database for $username: ".$self -> {"user_dbh"} -> errstr);
+
+    return 1;
+}
+
+
+## @method private $ _delete_database($username)
+# Delete the specified database from the system. Use with caution.
+#
+# @param username The name of the user to delete the database for.
+# @return true on nukeage, false otherwise
+sub _delete_database {
+    my $self     = shift;
+    my $username = shift;
+
+    $self -> clear_error();
+
+    my $nukeh = $self -> {"user_dbh"} -> prepare("DROP DATABASE IF EXISTS `$username`");
+    $nukeh -> execute()
+        or return $self -> self_error("Unable to remove user database: ".$self -> {"user_dbh"} -> errstr);
 
     return 1;
 }

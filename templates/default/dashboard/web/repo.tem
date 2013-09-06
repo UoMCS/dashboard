@@ -12,6 +12,5 @@
             <input type="button" class="button red"  value="{L_WEBSITE_NUKEREPOS}" id="nukerepos" />
             <input type="button" class="button red"  value="{L_WEBSITE_CHANGEREPOS}" id="newrepos" />
         </div>
-        </form>
     </div>
 </li>

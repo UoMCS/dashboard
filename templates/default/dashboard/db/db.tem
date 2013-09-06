@@ -1,0 +1,20 @@
+<li class="shadowbox">
+    <h2>{L_DATABASE_TITLE}</h2>
+    <div class="sbcontent">
+        <div>{L_DATABASE_GOTDATABASE}</div>
+        <blockquote>
+        <pre>$database_host = "dbhost.cs.man.ac.uk";
+$database_user = "***username***";
+$database_pass = "***password***";
+$database_name = "***username***";</pre>
+        </blockquote>
+        <div>{L_DATABASE_LOCATION}</div>
+        <blockquote><div><a href="https://dbhost.cs.man.ac.uk/phpMyAdmin/" class="rel">https://dbhost.cs.man.ac.uk/phpMyAdmin/</a></div></blockquote>
+        <hr />
+        <div class="submitbox">
+            <img class="workspin" id="dbworkspinner" src="{V_[templatepath]}images/spinner.gif" width="16" height="16" alt="working" />
+            <input type="button" class="button blue" value="{L_DATABASE_NEWPASS}" id="newdbpass" />
+            <input type="button" class="button red"  value="{L_DATABASE_NUKE}" id="nukedb" />
+        </div>
+    </div>
+</li>

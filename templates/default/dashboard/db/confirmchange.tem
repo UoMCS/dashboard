@@ -1,0 +1,14 @@
+<div>{L_WEBSITE_CONFIRM}</div>
+<div>{L_DATABASE_CHANGE_CONFIRM}
+     <p>{L_DATABASE_PASSNOTE}</p>
+     <dl class="input">
+         <dt><label for="db-pass" class="required">{L_DATABASE_PASSWORD}</label></dt>
+         <dd><input type="password" name="db-pass" id="db-pass" size="100" value="" /></dd>
+     </dl>
+     <dl class="input">
+         <dt><label for="db-conf" class="required">{L_DATABASE_PASSCONF}</label></dt>
+         <dd><input type="password" name="db-conf" id="db-conf" size="100" value="" /></dd>
+     </dl>
+</div>
+<div>{L_DATABASE_NEWPASS}</div>
+<div>{L_CANCEL_OPTION}</div>
