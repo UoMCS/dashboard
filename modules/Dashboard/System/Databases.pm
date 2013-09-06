@@ -80,14 +80,36 @@ sub user_database_exists {
     return 0 if($usercount -> [0] < scalar(@{$self -> {"allowed_hosts"}}));
 
     # Now check that the user's database exists
-    my $datah -> $self -> {"user_dbh"} -> prepare("SHOW DATABASES LIKE ?");
-    $datah -> execute($username)
-        or return $self -> self_error("Unable to perform user check: ".$self -> {"user_dbh"} -> errstr);
+    return $self -> _user_database_exists($username);
+}
 
-    my $database = $datah -> fetchrow_arrayref()
-        or return 0; # No row here means the database does not exist.
 
-    # Get here and the user and database exist.
+## @method $ setup_user_account($user, $password)
+# Do a full setup of the user's account and database
+#
+# @param user     A reference to the user's data hash.
+# @param password The password to set for the user's account.
+# @return true on success, undef on error
+sub setup_user_account {
+    my $self     = shift;
+    my $user     = shift;
+    my $password = shift;
+    my $username = lc($user ->{"username"});
+
+    $self -> clear_error();
+
+    $self -> create_user_account($username, $password)
+        or return undef;
+
+    $self -> create_user_database($username)
+        or return undef;
+
+    $self -> flush_privileges()
+        or return undef;
+
+    $self -> store_user_password($user -> {"user_id"}, $password)
+        or return undef;
+
     return 1;
 }
 
@@ -100,7 +122,7 @@ sub user_database_exists {
 # @return true on success, undef on error
 sub create_user_account {
     my $self     = shift;
-    my $username = shift;
+    my $username = lc(shift);
     my $password = shift;
 
     $self -> clear_error();
@@ -122,7 +144,7 @@ sub create_user_account {
 # @return true on success, undef on error.
 sub create_user_database {
     my $self     = shift;
-    my $username = shift;
+    my $username = lc(shift);
 
     $self -> clear_error();
 
@@ -130,6 +152,49 @@ sub create_user_database {
         $self -> _create_database($username, $host)
             or return undef;
     }
+
+    return 1;
+}
+
+
+## @method $ _flush_privileges()
+# Flush the privileges to pick up the new user.
+#
+# @return true on success, undef on error.
+sub flush_privileges {
+    my $self = shift;
+
+    $self -> clear_error();
+
+    my $privh = $self -> {"user_dbh"} -> prepare("FLUSH PRIVILEGES");
+    $privh -> execute()
+        or return $self -> self_error("Unable to perform privileges update: ".$self -> {"user_dbh"} -> errstr);
+
+    return 1;
+}
+
+
+## @method $ store_user_password($userid, $password)
+# Store the password set by the user for their database. This is... less than ideal,
+# but it is the only way in which the config.inc.php can be generated at runtime
+# and persist across repository updates.
+#
+# @param userid   The ID of the user's account.
+# @param password The password the user set for their database
+# @return true on success, undef on error.
+sub store_user_password {
+    my $self     = shift;
+    my $userid   = shift;
+    my $password = shift;
+
+    $self -> clear_error();
+
+    my $setpassh = $self -> {"dbh"} -> prepare("INSERT INTO `".$self -> {"settings"} -> {"database"} -> {"userdbs"}."`
+                                                (user_id, user_pass)
+                                                VALUES(?, ?)
+                                                ON DUPLICATE KEY UPDATE user_pass = VALUES(user_pass)");
+    $setpassh -> execute($userid, $password)
+        or return $self -> self_error("Unable to record user database information: ".$self -> {"dbh"} -> errstr);
 
     return 1;
 }
@@ -152,6 +217,8 @@ sub _get_user_account {
     my $username = shift;
     my $host     = shift;
 
+    $self -> clear_error();
+
     # Does the user account exist?
     my $userh = $self -> {"user_dbh"} -> prepare("SELECT * FROM `user`
                                                   WHERE `User` = ?
@@ -172,7 +239,9 @@ sub _user_database_exists {
     my $self     = shift;
     my $username = shift;
 
-    my $datah -> $self -> {"user_dbh"} -> prepare("SHOW DATABASES LIKE ?");
+    $self -> clear_error();
+
+    my $datah = $self -> {"user_dbh"} -> prepare("SHOW DATABASES LIKE ?");
     $datah -> execute($username)
         or return $self -> self_error("Unable to perform user check: ".$self -> {"user_dbh"} -> errstr);
 
@@ -207,19 +276,19 @@ sub _create_update_user {
                                                       SET `Password` = PASSWORD(?)
                                                       WHERE `User` = ?
                                                       AND `Host` = ?");
-        my $result = $userh -> execute($username, $host);
+        my $result = $passh -> execute($password, $username, $host);
         return $self -> self_error("Unable to execute user update: ".$self -> {"user_dbh"} -> errstr) if(!$result);
-        return $self -> self_error("User update failed: no rows updated") if($result ew "0E0");
+        return $self -> self_error("User update failed: no rows updated") if($result eq "0E0");
 
     } else {
         # User does not exist, create the account
         my $acch = $self -> {"user_dbh"} -> prepare('CREATE USER ?@? IDENTIFIED BY ?');
-        $acchh -> execute($username, $host, $password)
+        $acch -> execute($username, $host, $password)
             or return $self -> self_error("Unable to create new user: ".$self -> {"user_dbh"} -> errstr);
 
         # Confirm that the user account exists
         $user = $self -> _get_user_account($username, $host)
-            or return $undef;
+            or return undef;
 
         return $self -> self_error("User account creation failed, please try again later.")
             if(!$user -> {"User"});
@@ -251,9 +320,9 @@ sub _create_database {
     # Does the database already exist?
     if(!$self -> _user_database_exists($username)) {
         # Create the database...
-        my $newh = $self -> {"user_dbh"} -> prepare("CREATE DATABASE IF NOT EXISTS ?
+        my $newh = $self -> {"user_dbh"} -> prepare("CREATE DATABASE IF NOT EXISTS `$username`
                                                  DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci");
-        $newh -> execute($username)
+        $newh -> execute()
             or return $self -> self_error("Unable to create database for $username: ".$self -> {"user_dbh"} -> errstr);
 
         # Make sure it exists....

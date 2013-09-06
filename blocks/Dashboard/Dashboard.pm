@@ -106,6 +106,89 @@ sub _set_repository {
 
 
 # ============================================================================
+#  Database related
+
+## @method private $ _validate_database_fields($args)
+# Determine whether the password fields set by the user are valid.
+#
+# @param args A reference to a hash to store validated data in.
+# @return empty string on success, otherwise an error string.
+sub _validate_database_fields {
+    my $self = shift;
+    my $args = shift;
+    my ($errors, $error) = ("", "");
+
+    ($args -> {"db-pass"}, $error) = $self -> validate_string("db-pass", {"required"   => 1,
+                                                                          "nicename"   => $self -> {"template"} -> replace_langvar("DATABASE_PASSWORD"),
+                                                                          "minlen"     => 8,
+                                                                          "formattest" => '^[-.+\w]+$',
+                                                                          "formatdesc" => $self -> {"template"} -> replace_langvar("DATABASE_PASSERR"),
+                                                                });
+    $errors .= $self -> {"template"} -> load_template("error/error_item.tem", {"***error***" => $error}) if($error);
+
+    ($args -> {"db-conf"}, $error) = $self -> validate_string("db-conf", {"required"   => 1,
+                                                                          "nicename"   => $self -> {"template"} -> replace_langvar("DATABASE_PASSCONF"),
+                                                                          "minlen"     => 8,
+                                                                          "formattest" => '^[-.+\w]+$',
+                                                                          "formatdesc" => $self -> {"template"} -> replace_langvar("DATABASE_PASSERR"),
+                                                                });
+    $errors .= $self -> {"template"} -> load_template("error/error_item.tem", {"***error***" => $error}) if($error);
+
+    # Passwords must match
+    $errors .= $self -> {"template"} -> load_template("error/error_item.tem", {"***error***" => "{L_DATABASE_PASSMATCH}"})
+        unless(!$args -> {"db-pass"} || !$args -> {"db-conf"} || $args -> {"db-pass"} eq $args -> {"db-conf"});
+
+    return $errors;
+}
+
+
+## @method private @ _validate_database()
+# Determine whether the password fields set by the user are valid and if so set up
+# the user's database.
+sub _validate_database {
+    my $self = shift;
+    my ($args, $errors, $error) = ({}, "", "", undef);
+    my $user = $self -> {"session"} -> get_user_byid();
+
+    $error = $self -> _validate_database_fields($args);
+    $errors .= $error if($error);
+
+    return ($self -> {"template"} -> load_template("error/error_list.tem", {"***message***" => "{L_DATABASE_FAIL}",
+                                                                            "***errors***"  => $errors}), $args)
+        if($errors);
+
+    # Files are valid, do the create/reset
+    $self -> {"system"} -> {"databases"} -> setup_user_account($user, $args -> {"db-pass"})
+        or return ($self -> {"template"} -> load_template("error/error_list.tem", {"***message***" => "{L_DATABASE_FAIL}",
+                                                                                   "***errors***"  => $self -> {"template"} -> load_template("error/error_item.tem",
+                                                                                                                                             {"***error***" => $self -> {"system"} -> {"databases"} -> errstr(),
+                                                                                                                                             })
+                                                          }), $args);
+    return ($errors, $args);
+}
+
+
+## @method private $ _make_database()
+# Create the user's database account and table.
+#
+# @return Two strings, the first containing the page title, the second containing the
+#         page content.
+sub _make_database {
+    my $self = shift;
+    my $error = "";
+    my $args  = {};
+
+    ($error, $args) = $self -> _validate_database();
+    if(!$error) {
+        print $self -> {"cgi"} -> redirect($self -> build_url(pathinfo => ["newdbok"]));
+        exit;
+    }
+
+    return $self -> _generate_dashboard($args, $error);
+}
+
+
+# ============================================================================
 #  Content generation
 
 ## @method private $ _generate_web_publish($user, $args)
@@ -219,12 +302,12 @@ sub _update_repository {
 }
 
 
-## @method private $ _require_delete_confirm()
+## @method private $ _require_repository_delete_confirm()
 # An API function that generates a confirmation request to show to the user
 # before deleting the user's website.
 #
 # @return A string containing a block of HTML to return to the user.
-sub _require_delete_confirm {
+sub _require_repository_delete_confirm {
     my $self = shift;
 
     return $self -> {"template"} -> load_template("dashboard/web/confirmnuke.tem");
@@ -245,16 +328,16 @@ sub _delete_repository {
     $self -> {"system"} -> {"git"} -> delete_repository($user -> {"username"})
         or return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"system"} -> {"git"} -> errstr()}));
 
-    return { "return" => { "url" => $self -> build_url(fullurl => 1, block => "manage", pathinfo => ["deleted"], api => []) }};
+    return { "return" => { "url" => $self -> build_url(fullurl => 1, block => "manage", pathinfo => ["webdel"], api => []) }};
 }
 
 
-## @method private $ _require_change_confirm()
+## @method private $ _require_repository_change_confirm()
 # An API function that generates a confirmation request to show to the user
 # before changing the repostitory used as the source of the user's website.
 #
 # @return A string containing a block of HTML to return to the user.
-sub _require_change_confirm {
+sub _require_repositorychange_confirm {
     my $self = shift;
 
     return $self -> {"template"} -> load_template("dashboard/web/confirmchange.tem");
@@ -277,7 +360,7 @@ sub _change_repository {
     return $self -> api_errorhash("validation_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $errors}))
         if($errors);
 
-    return { "return" => { "url" => $self -> build_url(fullurl => 1, block => "manage", pathinfo => ["changed"], api => []) }};
+    return { "return" => { "url" => $self -> build_url(fullurl => 1, block => "manage", pathinfo => ["sebset"], api => []) }};
 }
 
 
@@ -301,11 +384,17 @@ sub page_display {
     if(defined($apiop)) {
         # API call - dispatch to appropriate handler.
         given($apiop) {
-            when ("pullrepo")  { return $self -> api_html_response($self -> _update_repository()); }
-            when ("nukecheck") { return $self -> api_html_response($self -> _require_delete_confirm()); }
-            when ("donuke")    { return $self -> api_response($self -> _delete_repository()); }
-            when ("setcheck")  { return $self -> api_html_response($self -> _require_change_confirm()); }
-            when ("dochange")  { return $self -> api_response($self -> _change_repository()); }
+            # Repository/website operations
+            when ("pullrepo")     { return $self -> api_html_response($self -> _update_repository()); }
+            when ("webnukecheck") { return $self -> api_html_response($self -> _require_repository_delete_confirm()); }
+            when ("websetcheck")  { return $self -> api_html_response($self -> _require_repository_change_confirm()); }
+            when ("dowebnuke")    { return $self -> api_response($self -> _delete_repository()); }
+            when ("dowebchange")  { return $self -> api_response($self -> _change_repository()); }
+
+            # database operations
+            when ("dbnukecheck")  { return $self -> api_html_response($self -> _require_database_delete_confirm()); }
+            when ("dbsetcheck")   { return $self -> api_html_response($self -> _require_database_change_confirm()); }
+
             default {
                 return $self -> api_html_response($self -> api_errorhash('bad_op',
                                                                          $self -> {"template"} -> replace_langvar("API_BAD_OP")))
@@ -320,10 +409,15 @@ sub page_display {
             ($title, $content, $extrahead) = $self -> _generate_dashboard();
         } else {
             given($pathinfo[0]) {
+                # Repository/website operations
                 when("setrepos") { ($title, $content, $extrahead) = $self -> _set_repository(); }
                 when("cloned")   { ($title, $content, $extrahead) = $self -> _generate_dashboard(undef, undef, "{L_WEBSITE_CLONE_SUCCESS}"); }
-                when("deleted")  { ($title, $content, $extrahead) = $self -> _generate_dashboard(undef, undef, "{L_WEBSITE_NUKE_SUCCESS}"); }
-                when("changed")  { ($title, $content, $extrahead) = $self -> _generate_dashboard(undef, undef, "{L_WEBSITE_CHANGE_SUCCESS}"); }
+                when("webdel")   { ($title, $content, $extrahead) = $self -> _generate_dashboard(undef, undef, "{L_WEBSITE_NUKE_SUCCESS}"); }
+                when("webset")   { ($title, $content, $extrahead) = $self -> _generate_dashboard(undef, undef, "{L_WEBSITE_CHANGE_SUCCESS}"); }
+
+                # Database operations
+                when("newdb")    { ($title, $content, $extrahead) = $self -> _make_database(); }
+                when("newdbok")  { ($title, $content, $extrahead) = $self -> _generate_dashboard(undef, undef, "{L_DATABASE_SETUP_SUCCESS}"); }
 
                 default {
                     ($title, $content, $extrahead) = $self -> _generate_dashboard();

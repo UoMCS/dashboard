@@ -3,11 +3,13 @@ var updatelock = false;
 /** Disable the submission button for a form. This is an attempt to
  *  prevent, or at least reduce the likelihood, of repeat submissions.
  */
-function form_protect(submit)
+function form_protect(submit, spinner)
 {
+    if(!spinner) spinner = 'workspinner';
+
     $(submit).set('disabled', true);
     $(submit).addClass('disabled');
-    $('workspinner').fade('in');
+    $(spinner).fade('in');
 
     return true;
 }
@@ -87,7 +89,7 @@ function delete_repos()
     if(updatelock) return false;
     updatelock = true;
 
-    var req = new Request.HTML({ url: api_request_path("dashboard", "nukecheck"),
+    var req = new Request.HTML({ url: api_request_path("dashboard", "webnukecheck"),
                                  method: 'post',
                                  onRequest: function() {
                                      $('workspinner').fade('in');
@@ -125,7 +127,7 @@ function do_delete_repos()
     if(updatelock) return false;
     updatelock = true;
 
-    var req = new Request({ url: api_request_path("dashboard", "donuke"),
+    var req = new Request({ url: api_request_path("dashboard", "dowebnuke"),
                             method: 'post',
                             onRequest: function() {
                                 $('workspinner').fade('in');
@@ -161,7 +163,7 @@ function change_repos()
     if(updatelock) return false;
     updatelock = true;
 
-    var req = new Request.HTML({ url: api_request_path("dashboard", "setcheck"),
+    var req = new Request.HTML({ url: api_request_path("dashboard", "websetcheck"),
                                  method: 'post',
                                  onRequest: function() {
                                      $('workspinner').fade('in');
@@ -199,7 +201,7 @@ function do_change_repos()
     if(updatelock) return false;
     updatelock = true;
 
-    var req = new Request({ url: api_request_path("dashboard", "dochange"),
+    var req = new Request({ url: api_request_path("dashboard", "dowebchange"),
                             method: 'post',
                             onRequest: function() {
                                 $('workspinner').fade('in');
@@ -244,7 +246,7 @@ window.addEvent('domready', function()
                          element.addEvent('click',
                                           function (e) {
                                               e.stop();
-                                              window.open(element.href); 
+                                              window.open(element.href);
                                           });
                      });
 });
