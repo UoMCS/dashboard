@@ -62,12 +62,16 @@ sub new {
 #         on error.
 sub safe_username {
     my $self     = shift;
-    my $username = lc(shift);
+    my $username = shift;
 
     $self -> clear_error();
 
+    return $self -> self_error("No username specified") if(!$username);
+
+    $username = lc($username);
+
     my ($safename) = $username =~ /^([-\w]+)$/;
-    return $self -> self_error("Username contains illegal characters") if(!$safename);
+    return $self -> self_error("Username '$username' contains illegal characters") if(!$safename);
 
     return $safename;
 }
@@ -84,9 +88,12 @@ sub safe_username {
 # @return True if the user's database exists, false if it does not, undef on error.
 sub user_database_exists {
     my $self     = shift;
-    my $username = $self -> safe_username(shift) || return undef;
+    my $username = shift;
 
     $self -> clear_error();
+
+    $username = $self -> safe_username($username)
+        or return undef;
 
     # check for the user first
     my $userh = $self -> {"user_dbh"} -> prepare("SELECT COUNT(*)
@@ -117,9 +124,11 @@ sub setup_user_account {
     my $self     = shift;
     my $user     = shift;
     my $password = shift;
-    my $username = $self -> safe_username($user -> {"username"}) || return undef;
 
     $self -> clear_error();
+
+    my $username = $self -> safe_username($user -> {"username"})
+        or return undef;
 
     $self -> create_user_account($username, $password)
         or return undef;
@@ -145,10 +154,13 @@ sub setup_user_account {
 # @return true on success, undef on error
 sub create_user_account {
     my $self     = shift;
-    my $username = $self -> safe_username(shift) || return undef;
+    my $username = shift;
     my $password = shift;
 
     $self -> clear_error();
+
+    $username = $self -> safe_username($username)
+        or return undef;
 
     foreach my $host (@{$self -> {"allowed_hosts"}}) {
         $self -> _create_update_user($username, $host, $password)
@@ -167,9 +179,12 @@ sub create_user_account {
 # @return true on success, undef on error.
 sub create_user_database {
     my $self     = shift;
-    my $username = $self -> safe_username(shift) || return undef;
+    my $username = shift;
 
     $self -> clear_error();
+
+    $username = $self -> safe_username($username)
+        or return undef;
 
     foreach my $host (@{$self -> {"allowed_hosts"}}) {
         $self -> _create_database($username, $host)
@@ -188,9 +203,12 @@ sub create_user_database {
 # @return true on succes, undef on error.
 sub delete_user_account {
     my $self     = shift;
-    my $username = $self -> safe_username(shift) || return undef;
+    my $username = shift;
 
     $self -> clear_error();
+
+    $username = $self -> safe_username($username)
+        or return undef;
 
     $self -> _delete_database($username)
         or return undef;
@@ -244,6 +262,35 @@ sub store_user_password {
         or return $self -> self_error("Unable to record user database information: ".$self -> {"dbh"} -> errstr);
 
     return 1;
+}
+
+
+## @method $ get_user_password($username)
+# Given a username, obtain the password that user set on their database.
+#
+# @param username The name of the user to fetch the password for.
+# @return The password on success, undef on error.
+sub get_user_password {
+    my $self     = shift;
+    my $username = shift;
+
+    $self -> clear_error();
+
+    $username = $self -> safe_username($username)
+        or return undef;
+
+    my $getpassh = $self -> {"dbh"} -> prepare("SELECT user_pass
+                                                FROM `".$self -> {"settings"} -> {"database"} -> {"userdbs"}."` AS p,
+                                                     `".$self -> {"settings"} -> {"database"} -> {"users"}."` AS u
+                                                WHERE p.user_id = u.user_id
+                                                AND u.username LIKE ?");
+    $getpassh -> execute($username)
+        or return $self -> self_error("Unable to check user database information: ".$self -> {"dbh"} -> errstr);
+
+    my $pass = $getpassh -> fetchrow_arrayref()
+        or return $self -> self_error("No information stored for user $username");
+
+    return $pass -> [0];
 }
 
 

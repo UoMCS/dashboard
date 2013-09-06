@@ -73,6 +73,7 @@ my $tempdir = path_join($settings -> {"git"} -> {"webtempdir"}, $username);
 if(-e $tempdir) {
     if(-d $tempdir) {
         my $htaccess = path_join($tempdir, ".htaccess");
+        my $config   = path_join($tempdir, "config.inc.php");
         my $gitdir   = path_join($tempdir, ".git");
 
         create_htaccess($htaccess, $userdir);
@@ -82,8 +83,16 @@ if(-e $tempdir) {
         my $res = `/bin/chown -R $user:$grp '$htaccess' '$gitdir' 2>&1`;
         fatal_error("Unable to set owner: $res") if($res);
 
-        $res = `/bin/chmod -R g-w,u-w '$htaccess' '$gitdir' 2>&1`;
+        $res = `/bin/chmod -R o-w,g-w,u-w '$htaccess' '$gitdir' 2>&1`;
         fatal_error("Unable to complete setup: $res") if($res);
+
+        if(-e $config) {
+            $res = `/bin/chown -R $user:$grp '$config' 2>&1`;
+            fatal_error("Unable to set config owner: $res") if($res);
+
+            $res = `/bin/chmod -R o-w,g-w,u-w '$config' 2>&1`;
+            fatal_error("Unable to complete config setup: $res") if($res);
+        }
 
         fatal_error("User directory move failed: $!")
             unless(rename $tempdir, $userdir);

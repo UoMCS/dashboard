@@ -55,13 +55,17 @@ if(-e $userdir) {
     if(-d $userdir) {
         if(rename $userdir, $tempdir) {
             my $htaccess = path_join($tempdir, ".htaccess");
+            my $config   = path_join($tempdir, "config.inc.php");
             my $gitdir   = path_join($tempdir, ".git");
 
             # Add back the write perms
-            `/bin/chmod -R u+w,g+w '$htaccess' '$gitdir'`;
+            foreach my $file ($htaccess, $config, $gitdir) {
+                `/bin/chmod -R u+w,g+w $file` if(-e $file);
+            }
 
-            # The .htaccess can go, if it exists
-            unlink($htaccess);
+            # The .htaccess can go, if it exists, as can the config file
+            unlink($htaccess) if(-e $htaccess);
+            unlink($config) if(-e $config);
         } else {
             fatal_error("User directory move failed: $!");
         }

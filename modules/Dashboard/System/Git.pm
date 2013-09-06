@@ -22,7 +22,7 @@ package Dashboard::System::Git;
 
 use strict;
 use base qw(Webperl::SystemModule);
-use Webperl::Utils qw(path_join blind_untaint);
+use Webperl::Utils qw(path_join blind_untaint save_file);
 use Git::Repository;
 use v5.12;
 
@@ -106,6 +106,9 @@ sub clone_repository {
         return $self -> self_error("Clone failed: $err\n");
     }
 
+    $self -> _write_config_file($target, $username)
+        or return undef;
+
     # clone is complete, move the clone into position
     $res = `sudo $self->{settings}->{repostools}->{postgit} $safename`;
     return $self -> self_error("Clone failed: $res") if($res);
@@ -130,7 +133,7 @@ sub pull_repository {
 
     # perform the pre-pull step
     my $res = `sudo $self->{settings}->{repostools}->{prepull} $safename`;
-    return $self -> self_error("/pull failed: $res") if($res);
+    return $self -> self_error("Pull failed: $res") if($res);
 
     # Do the pull
     my $target = blind_untaint(path_join($self -> {"settings"} -> {"git"} -> {"webtempdir"}, $safename));
@@ -146,6 +149,9 @@ sub pull_repository {
         return $self -> self_error("Pull failed (git error): $err\n");
     }
 
+    $self -> _write_config_file($target, $username)
+        or return undef;
+
     # clone is complete, move the clone into position
     $res = `sudo $self->{settings}->{repostools}->{postgit} $safename`;
     return $self -> self_error("Pull failed: $res") if($res);
@@ -153,4 +159,69 @@ sub pull_repository {
     return 1;
 }
 
+
+## @method $ write_config($username)
+# If the user's web directory exists, write a new config.inc.php to it
+#
+# @param username The name of the user to set the config for
+# @return true on success, undef on error
+sub write_config {
+    my $self     = shift;
+    my $username = lc(shift);
+
+    $self -> clear_error();
+
+    my ($safename) = $username =~/^([.\w]+)$/;
+    return $self -> self_error("Config write failed: illegal username specified") if(!$safename);
+
+    # Do nothing if the user has no web tree
+    if($self -> user_web_repo_exists($safename)) {
+        # perform the pre-pull step. Need to do this to get write permission!
+        my $res = `sudo $self->{settings}->{repostools}->{prepull} $safename`;
+        return $self -> self_error("Config write failed: $res") if($res);
+
+        my $target = blind_untaint(path_join($self -> {"settings"} -> {"git"} -> {"webtempdir"}, $safename));
+        $self -> _write_config_file($target, $safename)
+            or return undef;
+
+        # Move the web tree back again
+        $res = `sudo $self->{settings}->{repostools}->{postgit} $safename`;
+        return $self -> self_error("Pull failed: $res") if($res);
+    }
+
+    return 1;
+}
+
+
+# ============================================================================
+#  Private and ghastly internals
+
+
+## @method private $ _write_config_file($dir, $username)
+# Write the config.inc.php for the specified user into the directory specified.
+#
+# @param dir      The directory to write the config.inc.php file.
+# @param username The name of the user to create the file for
+# @return true on success, undef on error.
+sub _write_config_file {
+    my $self     = shift;
+    my $dir      = shift;
+    my $username = shift;
+
+    $self -> clear_error();
+
+    # Do nothing if the user has no database
+    if($self -> {"databases"} -> user_database_exists($username)) {
+        my $configname = path_join($dir, "config.inc.php");
+        my $pass = $self -> {"databases"} -> get_user_password($username)
+            or return $self -> self_error($self -> {"databases"} -> errstr());
+
+        my $config = "<?php\n\n\$database_host = \"dbhost.cs.man.ac.uk\";\n\$database_user = \"$username\";\n\$database_pass = \"$pass\";\n\$database_name = \"$username\";\n\n?>\n";
+
+        eval { save_file($configname, $config); };
+        return $self -> self_error("Unable to write configuration file: $@") if($@);
+    }
+
+    return 1;
+}
 1;

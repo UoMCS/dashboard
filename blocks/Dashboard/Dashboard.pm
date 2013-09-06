@@ -168,6 +168,16 @@ sub _validate_database {
                                                                                                                                              {"***error***" => $self -> {"system"} -> {"databases"} -> errstr(),
                                                                                                                                              })
                                                           }), $args);
+
+    # Write the config file if needed
+    $self -> log("database", "Writing config file for user ".$user -> {"username"});
+    $self -> {"system"} -> {"git"} -> write_config($user -> {"username"})
+        or return ($self -> {"template"} -> load_template("error/error_list.tem", {"***message***" => "{L_DATABASE_FAIL}",
+                                                                                   "***errors***"  => $self -> {"template"} -> load_template("error/error_item.tem",
+                                                                                                                                             {"***error***" => $self -> {"system"} -> {"git"} -> errstr(),
+                                                                                                                                             })
+                                                          }), $args);
+
     return ($errors, $args);
 }
 
@@ -441,6 +451,10 @@ sub _delete_database {
 
     $self -> {"system"} -> {"databases"} -> delete_user_account($user -> {"username"})
         or return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"system"} -> {"databases"} -> errstr()}));
+
+    $self -> log("database", "Deleting config file for user ".$user -> {"username"});
+    $self -> {"system"} -> {"git"} -> write_config($user -> {"username"})
+        or return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"system"} -> {"git"} -> errstr()}));
 
     return { "return" => { "url" => $self -> build_url(fullurl => 1, block => "manage", pathinfo => ["dbdel"], api => []) }};
 }

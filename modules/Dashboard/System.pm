@@ -57,15 +57,17 @@ sub init {
         or return undef;
 
     # now create the Dashboard-specific objects
-    $self -> {"git"} = Dashboard::System::Git -> new(dbh      => $self -> {"dbh"},
-                                                     settings => $self -> {"settings"},
-                                                     logger   => $self -> {"logger"})
-        or return $self -> self_error("Git init failed: ".$Webperl::SystemModule::errstr);
-
     $self -> {"databases"} = Dashboard::System::Databases -> new(dbh      => $self -> {"dbh"},
                                                                  settings => $self -> {"settings"},
                                                                  logger   => $self -> {"logger"})
         or return $self -> self_error("Databases init failed: ".$Webperl::SystemModule::errstr);
+
+    $self -> {"git"} = Dashboard::System::Git -> new(dbh       => $self -> {"dbh"},
+                                                     settings  => $self -> {"settings"},
+                                                     logger    => $self -> {"logger"},
+                                                     databases => $self -> {"databases"})
+        or return $self -> self_error("Git init failed: ".$Webperl::SystemModule::errstr);
+
 
     $self -> {"metadata"} = Dashboard::System::Metadata -> new(dbh      => $self -> {"dbh"},
                                                               settings => $self -> {"settings"},
