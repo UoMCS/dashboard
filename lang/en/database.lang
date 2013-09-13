@@ -1,6 +1,6 @@
 DATABASE_TITLE     = MySQL Database account
 DATABASE_NODB      = You have not yet created a MySQL database account. In order to create your account, please enter a password to use in the form below. <strong>Do not</strong> use your University central account password, or a password you use for any important systems as your database password. Your database credentials will be written to a <code>config.inc.php</code> file added to the root of your web directory,
-DATABASE_PASSNOTE  = In order to reduce the likelihood of various common problems with database passwords, the system will only allow you to specify alphanumeric (<code>A-z</code>,<code>A-Z</code>,<code>0-9</code>) characters and <code>-</code>, <code>_</code>, <code>.</code>, and <code>+</code> in your database password. Passwords should be 8 characters or more in length.
+DATABASE_PASSNOTE  = In order to reduce the likelihood of various common problems with database passwords, the system will only allow you to specify alphanumeric (<code>a-z</code>,<code>A-Z</code>,<code>0-9</code>) characters and <code>-</code>, <code>_</code>, <code>.</code>, and <code>+</code> in your database password. Passwords should be 8 characters or more in length.
 DATABASE_PASSERR   = Passwords may only contain alphanumeric characters and <code>-</code>, <code>_</code>, <code>.</code>, and <code>+</code>
 DATABASE_PASSWORD  = Database password
 DATABASE_PASSCONF  = Confirm password
