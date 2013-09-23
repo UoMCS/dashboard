@@ -7,7 +7,7 @@ use lib qw(/var/www/webperl);
 use v5.12;
 
 use Webperl::ConfigMicro;
-use Webperl::Utils qw(path_join save_file);
+use Webperl::Utils qw(path_join save_file load_file);
 
 use FindBin;             # Work out where we are
 my $scriptpath;
@@ -45,8 +45,17 @@ sub fatal_error {
 sub create_htaccess {
     my $htaccess = shift;
     my $userdir  = shift;
+    my $contents;
 
-    my $contents = "php_value open_basedir ".$userdir.":/tmp/\n";
+    if(-f $htaccess) {
+        $contents = load_file($htaccess);
+        fatal_error("Unable to read existing .htaccess file: $!") if(!defined($contents));
+
+        # Kill any pointless attempts to set open_basedir
+        $contents =~ s/^\s*php_value open_basedir .*$//gim;
+    }
+
+    $contents .= "\nphp_value open_basedir ".$userdir.":/tmp/\n";
 
     eval { save_file($htaccess, $contents); };
     fatal_error($@) if($@);
