@@ -55,7 +55,8 @@ sub create_htaccess {
         $contents =~ s/^\s*php_value open_basedir .*$//gim;
     }
 
-    $contents .= "\nphp_value open_basedir ".$userdir.":/tmp/\n";
+    $contents .= "\n" if($contents && $contents !~ /\n$/);
+    $contents .= "php_value open_basedir ".$userdir.":/tmp/\n";
 
     eval { save_file($htaccess, $contents); };
     fatal_error($@) if($@);
