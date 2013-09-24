@@ -8,6 +8,7 @@ use v5.12;
 
 use Webperl::ConfigMicro;
 use Webperl::Utils qw(path_join);
+use Git::Repository;
 
 use FindBin;             # Work out where we are
 my $scriptpath;
@@ -63,8 +64,12 @@ if(-e $userdir) {
                 `/bin/chmod -R u+w,g+w $file` if(-e $file);
             }
 
+            my $output = eval {
+                my $repo = Git::Repository -> new(work_tree => $tempdir, { git => "/usr/bin/git", input => "" });
+                $repo -> run("checkout .htaccess");
+            };
+
             # The .htaccess can go, if it exists, as can the config file
-            unlink($htaccess) if(-e $htaccess);
             unlink($config) if(-e $config);
         } else {
             fatal_error("User directory move failed: $!");
