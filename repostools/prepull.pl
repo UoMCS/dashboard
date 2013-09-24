@@ -46,6 +46,8 @@ my ($username) = $raw_username =~/^([.\w]+)$/;
 fatal_error("Username is not valid")
     unless($username);
 
+print STDERR "Running prepull for $username";
+
 # Where should the directory be?
 my $userdir = path_join($settings -> {"git"} -> {"webbasedir"}, $username);
 
@@ -80,3 +82,5 @@ if(-e $userdir) {
 } else {
     fatal_error("No user directory found, unable to move to working area.");
 }
+
+print STDERR "Done prepull for $username";
