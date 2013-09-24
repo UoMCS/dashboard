@@ -46,7 +46,7 @@ window.addEvent('domready', function() {
                             ],
                             content: '<table><tr><td class="nbox-image"><img src="{V_[scriptpath]}templates/default/images/error.png" width="48" height="48" alt="error" /></td><td class="nbox-text" id="errboxmsg"></td></tr></table>'
     });
-    popbox = new LightFace({title: '<div id="poptitle">{L_COURSE_POPUP}</div>',
+    popbox = new LightFace({title: '<div id="poptitle">{L_PAGE_POPUP}</div>',
                             draggable: false,
                             overlayAll: true,
                             content: '<div id="popbody"></div>',
@@ -56,7 +56,9 @@ window.addEvent('domready', function() {
     });
 });
 // ]]>
-            </script></div>
+            </script>
+    <div class="footer">{L_PAGE_FOOTER}</div>
+</div>
 ***userbar***
 </body>
 </html>

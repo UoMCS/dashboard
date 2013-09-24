@@ -45,6 +45,14 @@
     background-position: left center;
 }
 
+.dashboard .footer {
+    text-align: center;
+    width: 50%;
+    margin: 0px auto;
+    font-size: 11px;
+    color: #777;
+}
+
 .dashboard #botbar {
     position: absolute;
     left: 0px;
