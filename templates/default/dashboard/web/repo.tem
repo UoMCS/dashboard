@@ -8,8 +8,9 @@
         <hr />
         <div class="submitbox">
             <img class="workspin" id="workspinner" src="{V_[templatepath]}images/spinner.gif" width="16" height="16" alt="working" />
-            <input type="button" class="button blue" value="{L_WEBSITE_PULLREPOS}" id="pullrepos" />
-            <input type="button" class="button red"  value="{L_WEBSITE_NUKEREPOS}" id="nukerepos" />
+            <input type="button" class="button blue" value="{L_WEBSITE_EXTPULL}"     id="pulltoken" />
+            <input type="button" class="button blue" value="{L_WEBSITE_PULLREPOS}"   id="pullrepos" />
+            <input type="button" class="button red"  value="{L_WEBSITE_NUKEREPOS}"   id="nukerepos" />
             <input type="button" class="button red"  value="{L_WEBSITE_CHANGEREPOS}" id="newrepos" />
         </div>
     </div>

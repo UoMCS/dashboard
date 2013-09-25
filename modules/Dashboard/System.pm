@@ -30,6 +30,7 @@ use Dashboard::System::Roles;
 use Dashboard::System::Tags;
 use Dashboard::System::UserDataBridge;
 use Dashboard::System::Git;
+use Dashboard::System::ReposTools;
 use Dashboard::System::Databases;
 
 ## @method $ init(%args)
@@ -61,6 +62,11 @@ sub init {
                                                                  settings => $self -> {"settings"},
                                                                  logger   => $self -> {"logger"})
         or return $self -> self_error("Databases init failed: ".$Webperl::SystemModule::errstr);
+
+    $self -> {"repostools"} = Dashboard::System::ReposTools -> new(dbh      => $self -> {"dbh"},
+                                                                   settings => $self -> {"settings"},
+                                                                   logger   => $self -> {"logger"})
+        or return $self -> self_error("ReposTools init failed: ".$Webperl::SystemModule::errstr);
 
     $self -> {"git"} = Dashboard::System::Git -> new(dbh       => $self -> {"dbh"},
                                                      settings  => $self -> {"settings"},

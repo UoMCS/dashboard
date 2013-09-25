@@ -20,6 +20,9 @@ function form_protect(submit, spinner)
  */
 function enable_repos_controls()
 {
+    if($('pulltoken'))
+        $('pulltoken').addEvent('click', function() { show_token(); }).removeClass('disabled');
+
     if($('pullrepos'))
         $('pullrepos').addEvent('click', function() { update_repos(); }).removeClass('disabled');
 
@@ -36,6 +39,7 @@ function enable_repos_controls()
  */
 function disable_repos_controls()
 {
+    $('pulltoken').removeEvents('click').addClass('disabled');
     $('pullrepos').removeEvents('click').addClass('disabled');
     $('nukerepos').removeEvents('click').addClass('disabled');
     $('newrepos').removeEvents('click').addClass('disabled');
@@ -62,6 +66,43 @@ function disable_database_controls()
 {
     $('newdbpass').removeEvents('click').addClass('disabled');
     $('nukedb').removeEvents('click').addClass('disabled');
+}
+
+
+function show_token()
+{
+    if(updatelock) return false;
+    updatelock = true;
+
+    var req = new Request.HTML({ url: api_request_path("dashboard", "gettoken"),
+                                 method: 'post',
+                                 onRequest: function() {
+                                     $('workspinner').fade('in');
+                                     disable_repos_controls();
+                                 },
+                                 onSuccess: function(respTree, respElems, respHTML) {
+                                     var err = respHTML.match(/^<div id="apierror"/);
+
+                                     if(err) {
+                                         $('errboxmsg').set('html', respHTML);
+                                         errbox.open();
+
+                                     // No error, post was edited, the element provided should
+                                     // be the new <li>...
+                                     } else {
+                                         $('poptitle').set('text', respTree[0].get('text'));
+                                         $('popbody').empty().grab(respTree[2]);
+                                         popbox.setButtons([{title: respTree[3].get('text'), color: 'blue', event: function() { popbox.close(); }}]);
+                                         popbox.open();
+                                     }
+                                     $('workspinner').fade('out');
+                                     enable_repos_controls();
+                                     updatelock = false;
+                                 }
+                               });
+    req.post();
+
+    return false;
 }
 
 
@@ -406,7 +447,7 @@ function do_delete_database()
 window.addEvent('domready', function()
 {
     if($('web-repos'))
-        new OverText('web-repos');
+        new OverText('web-repos', { poll: true });
 
     if($('notebox'))
         setTimeout(function() { $('notebox').dissolve() }, 8000);

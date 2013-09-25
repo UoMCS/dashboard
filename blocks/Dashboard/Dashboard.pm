@@ -83,6 +83,13 @@ sub _validate_repository {
                                                                                                                                              })
                                                           }), $args);
 
+    $self -> {"system"} -> {"repostools"} -> set_user_token($args -> {"web-repos"}, $user)
+        or return ($self -> {"template"} -> load_template("error/error_list.tem", {"***message***" => "{L_WEBSITE_CLONE_FAIL}",
+                                                                                   "***errors***"  => $self -> {"template"} -> load_template("error/error_item.tem",
+                                                                                                                                             {"***error***" => $self -> {"system"} -> {"repostools"} -> errstr(),
+                                                                                                                                             })
+                                                          }), $args);
+
     return ($errors, $args);
 }
 
@@ -219,7 +226,7 @@ sub _generate_web_publish {
     my $args = shift;
 
     # First up, does the user have an existing repository in place?
-    my $origin = $self -> {"system"} -> {"git"} ->user_web_repo_exists($user -> {"username"});
+    my $origin = $self -> {"system"} -> {"git"} -> user_web_repo_exists($user -> {"username"});
     if(!$origin) {
         return $self -> {"template"} -> load_template("dashboard/web/norepo.tem", {"***web-repos***" => $args -> {"web-repos"},
                                                                                    "***form_url***"  => $self -> build_url(block => "manage", "pathinfo" => [ "setrepos" ])});
@@ -301,6 +308,39 @@ sub _generate_dashboard {
 
 # ============================================================================
 #  API functions
+
+## @method private $ _show_token()
+# An API function that generates a token information string to send to the
+# user.
+#
+# @return A string containing a block of HTML to return to the user.
+sub _show_token {
+    my $self   = shift;
+    my $user   = $self -> {"session"} -> get_user_byid();
+
+    $self -> log("repository", "Token requested.");
+
+    my $origin = $self -> {"system"} -> {"git"} -> user_web_repo_exists($user -> {"username"})
+        or return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => "{L_WEBSITE_ERR_NOREPO}"}));
+
+    my $token = $self -> {"system"} -> {"repostools"} -> get_user_token($user -> {"user_id"})
+        or return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"system"} -> {"repostools"} -> errstr()}));
+
+    # If the user doesn't have a token, or it somehow doesn't match the origin, make a new one
+    if(!$token -> {"repos_url"} || $token -> {"repos_url"} != $origin) {
+        $self -> log("repository", "User doesn't have a token, or it is incorrect. Making new");
+
+        $token = $self -> {"system"} -> {"repostools"} -> set_user_token($origin, $user)
+            or return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"system"} -> {"repostools"} -> errstr()}));
+    }
+
+    return $self -> {"template"} -> load_template("dashboard/web/showtoken.tem", { "***token_url***" => $self -> build_url(fullurl  => 1,
+                                                                                                                           block    => "update",
+                                                                                                                           api      => [],
+                                                                                                                           pathinfo => [],
+                                                                                                                           params   => { "token" => $token -> {"token"}})});
+}
+
 
 ## @method private $ _update_repository()
 # An API function that triggers a git pull on the user's repository.
@@ -481,6 +521,7 @@ sub page_display {
         # API call - dispatch to appropriate handler.
         given($apiop) {
             # Repository/website operations
+            when ("gettoken")     { return $self -> api_html_response($self -> _show_token()); }
             when ("pullrepo")     { return $self -> api_html_response($self -> _update_repository()); }
             when ("webnukecheck") { return $self -> api_html_response($self -> _require_repository_delete_confirm()); }
             when ("websetcheck")  { return $self -> api_html_response($self -> _require_repository_change_confirm()); }

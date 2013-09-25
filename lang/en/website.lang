@@ -25,3 +25,13 @@ WEBSITE_CHANGE_SUCCESS = Project change successful. Your website is now using th
 WEBSITE_NUKE_CONFIRM   = Are you sure that you want to delete your web tree? You can create a new one by entering a new project repository at a later time.
 WEBSITE_CHANGE_CONFIRM = Are you sure that you want to change the project used as the source of your website? Changing the project will entirely replace your existing website. If you want to continue, please enter the URL of the project to use as your website below.
 WEBSITE_CONFIRM  = Confirmation requested.
+
+WEBSITE_EXTPULL    = Show update token
+WEBSITE_TOKEN      = Remote Update Token
+WEBSITE_TOKEN_DESC = If you need to update your website from outside the SoCS Web Dashboard (for example, from a shell), you can do it using a command like the ones below. Note that you should be careful not to make your token available to others; anyone that has the token can instruct the dashboard to update your website! If you need a new token for any reason, simply delete your web site and publish it again.
+WEBSITE_CURL       = Using curl:
+WEBSITE_WGET       = Using wget:
+WEBSITE_ERR_NOREPO = You do not currently have a published website.
+
+TOKEN_ERR_NOTOKEN  = No token provided when calling the remote update API.
+TOKEN_ERR_BADTOKEN = The provided token does not appear to be valid remote update token.

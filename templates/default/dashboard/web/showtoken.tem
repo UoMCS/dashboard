@@ -1,0 +1,12 @@
+<div>{L_WEBSITE_TOKEN}</div>
+<div><p>{L_WEBSITE_TOKEN_DESC}</p>
+<dl class="input">
+<dt>{L_WEBSITE_CURL}</dt>
+<dd><input type="text" name="curl" id="tokcurl" value="curl ***token_url*** -o status.json" readonly="readonly" class="fillwide" /></dd>
+</dl>
+<dl class="input">
+<dt>{L_WEBSITE_WGET}</dt>
+<dd><input type="text" name="wget" id="tokwget" value="wget ***token_url*** -O status.json" readonly="readonly" class="fillwide" /></dd>
+</dl>
+</div>
+<div>{L_CLOSE_OPTION}</div>
