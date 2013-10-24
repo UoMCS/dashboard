@@ -162,11 +162,9 @@ sub pull_repository {
     # Do the pull
     my $target = blind_untaint(path_join($self -> {"settings"} -> {"git"} -> {"webtempdir"}, $safename));
     my $output = eval {
-        print STDERR "In pull_repository";
         my $repo = Git::Repository -> new(work_tree => $target, { git => "/usr/bin/git", input => "", fatal => [1, 127, 128, 129] });
         $repo -> run("pull");
     };
-    print STDERR "Passed run, output: $output, err: $@";
 
     if(my $err = $@) {
         my $cleanup = $self -> _pull_cleanup($target, $username, $safename);
