@@ -117,6 +117,30 @@ sub clone_repository {
 }
 
 
+## @method private $ _pull_cleanup($target, $username, $safename)
+# Clean up after a pull (whether successful or not).
+#
+# @param target   The target path for the temporary directory.
+# @param username The username of the user doing the pull
+# @param safename The safe name of the repository
+# @return true on success, undef on error.
+sub _pull_cleanup {
+    my $self     = shift;
+    my $target   = shift;
+    my $username = shift;
+    my $safename = shift;
+
+    $self -> _write_config_file($target, $username)
+        or return undef;
+
+    # pull is complete, move the repository into position
+    my $res = `sudo $self->{settings}->{repostools}->{postgit} $safename`;
+    return $self -> self_error("Pull failed: $res") if($res);
+
+    return 1;
+}
+
+
 ## @method $ pull_repository($username)
 # Pull updates for the user's repository.
 #
@@ -138,25 +162,22 @@ sub pull_repository {
     # Do the pull
     my $target = blind_untaint(path_join($self -> {"settings"} -> {"git"} -> {"webtempdir"}, $safename));
     my $output = eval {
-        my $repo = Git::Repository -> new(work_tree => $target, { git => "/usr/bin/git", input => "" });
+        print STDERR "In pull_repository";
+        my $repo = Git::Repository -> new(work_tree => $target, { git => "/usr/bin/git", input => "", fatal => [1, 127, 128, 129] });
         $repo -> run("pull");
     };
+    print STDERR "Passed run, output: $output, err: $@";
 
     if(my $err = $@) {
-        return $self -> self_error("Failed while attempting to clone a private project. Make the project public and try again.")
+        my $cleanup = $self -> _pull_cleanup($target, $username, $safename);
+
+        return $self -> self_error("Pull failed: unable to update from a private project. Make the project public and try again.")
             if($err =~ /could not read Username for/);
 
         return $self -> self_error("Pull failed (git error): $err\n");
     }
 
-    $self -> _write_config_file($target, $username)
-        or return undef;
-
-    # clone is complete, move the clone into position
-    $res = `sudo $self->{settings}->{repostools}->{postgit} $safename`;
-    return $self -> self_error("Pull failed: $res") if($res);
-
-    return 1;
+    return $self -> _pull_cleanup($target, $username, $safename);
 }
 
 
