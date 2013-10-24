@@ -23,7 +23,8 @@ use strict;
 use base qw(Dashboard); # This class extends the Dashboard block class
 use v5.12;
 use JSON;
-
+use DateTime;
+use DateTime::Format::RFC3339;
 
 ## @method private $ _update_repository($token)
 # An API-like function that triggers a git pull on a user's repository. The user
@@ -77,8 +78,10 @@ sub _json_hash {
     my $short  = shift;
     my $desc   = shift;
 
+    my $date = DateTime -> now(time_zone => "UTC", formatter => DateTime::Format::RFC3339 -> new());
+
     my $hash = { "status"    => $status,
-                 "timestamp" => time()
+                 "timestamp" => "$date",
     };
 
     if($status eq "error") {
