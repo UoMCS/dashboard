@@ -235,7 +235,18 @@ sub _write_config_file {
         my $pass = $self -> {"databases"} -> get_user_password($username)
             or return $self -> self_error($self -> {"databases"} -> errstr());
 
-        my $config = "<?php\n\n\$database_host = \"dbhost.cs.man.ac.uk\";\n\$database_user = \"$username\";\n\$database_pass = \"$pass\";\n\$database_name = \"$username\";\n\n?>\n";
+        my $groups = $self -> {"databases"} -> get_user_group_databases($username);
+        my $grouplist = "";
+        if($groups) {
+            foreach my $database (sort keys(%{$groups})) {
+                next if($database eq "_internal");
+
+                $grouplist .= "    '$database',\n";
+            }
+        }
+        $grouplist = "\$group_dbnames = array(\n$grouplist);\n\n" if($grouplist);
+
+        my $config = "<?php\n\n\$database_host = \"dbhost.cs.man.ac.uk\";\n\$database_user = \"$username\";\n\$database_pass = \"$pass\";\n\$database_name = \"$username\";\n\n$grouplist?>\n";
 
         eval { save_file($configname, $config); };
         return $self -> self_error("Unable to write configuration file: $@") if($@);
@@ -243,4 +254,5 @@ sub _write_config_file {
 
     return 1;
 }
+
 1;

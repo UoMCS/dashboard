@@ -222,4 +222,102 @@ sub get_user_addresses {
     return \@emails;
 }
 
+
+## @method $ get_user_groupnames($username)
+# Given a username, obtain a list of course groups the user should have
+# access to. The group names returned take the form <year>_<course>_<group>,
+# and all characters are lowercase.
+#
+# @param username The username of the user to fetch the group list for
+# @return A reference to an array of group names the user should have access
+#         to (which may be empty), undef on error.
+sub get_user_groupnames {
+    my $self     = shift;
+    my $username = shift;
+
+    $self -> clear_error();
+
+    # Get the user's data
+    my $user = $self -> _get_user($username)
+        or return undef;
+
+    # And the list of groups the user is in
+    my $groups = $self -> _get_user_coursegroups($user -> {"id"})
+        or return undef;
+
+    # now convert the list above into a single list of strings
+    my @grouplist = ();
+    foreach my $group (@{$groups}) {
+        # Always force lowercase; mixed case/uppercase could be a pain later
+        push(@grouplist, lc($group -> {"year"}."_".$group -> {"course"}."_".$group -> {"group"}))
+    }
+
+    return \@grouplist;
+}
+
+
+# ============================================================================
+#  Private support stuff
+
+
+## @method private $ _get_user($username)
+# Given a username, obtain the user information for the specified user.
+#
+# @param username The username of the user to fetch the data for.
+# @return A reference to the user's data on success, undef on error.
+sub _get_user {
+    my $self     = shift;
+    my $username = shift;
+
+    $self -> clear_error();
+
+    my $userh = $self -> {"udata_dbh"} -> prepare("SELECT *
+                                                   FROM `".$self -> {"settings"} -> {"userdata"} -> {"users"}."`
+                                                   WHERE username LIKE ?
+                                                   LIMIT 1");
+    $userh -> execute($username)
+        or return $self -> self_error("Unable to execute userdata user lookup: ".$self -> {"dbh"} -> errstr);
+
+    return $userh -> fetchrow_hashref()
+        or $self -> self_error("No userdata user information for '$username'");
+}
+
+
+## @method private $ _get_user_coursegroups($userid, $active)
+# Given a userid, obtain a list of the course group names, courses, and years the user was
+# a member of the group.
+#
+# @param userid The ID of the user to fetch the group list for.
+# @param active If set to 1 (the default) this will return only groups the user is currently
+#               in (or was in in previous years). If set to 0, this will return groups the
+#               user was in but was removed from.
+# @return A reference to a list of hashrefs containing the group year, course name, and name
+#         for each group the user is in (which may be an empty list if the user isnot in
+#         any groups) on success, undef on error.
+sub _get_user_coursegroups {
+    my $self   = shift;
+    my $userid = shift;
+    my $active = shift;
+
+    $self -> clear_error();
+
+    $active = 1 if(!defined($active));
+
+    my $groupsh = $self -> {"udata_dbh"} -> prepare("SELECT `y`.`start_year` AS `year`, `c`.`course_id` AS `course`, `g`.`name` AS `group`
+                                                     FROM `".$self -> {"settings"} -> {"userdata"} -> {"acyears"}."` AS `y`,
+                                                          `".$self -> {"settings"} -> {"userdata"} -> {"courses"}."` AS `c`,
+                                                          `".$self -> {"settings"} -> {"userdata"} -> {"groups"}."` AS `g`,
+                                                          `".$self -> {"settings"} -> {"userdata"} -> {"user_groups"}."` AS `ug`
+                                                     WHERE `ug`.`student_id` = ?
+                                                     AND `ug`.`active` = ?
+                                                     AND `y`.`id` = `ug`.`year_id`
+                                                     AND `g`.`id` = `ug`.`group_id`
+                                                     AND `c`.`id` = `g`.`course_id`");
+    $groupsh -> execute($userid, $active)
+        or return $self -> self_error("Unable to execute userdata group lookup: ".$self -> {"dbh"} -> errstr);
+
+    return $groupsh -> fetchall_arrayref({});
+}
+
+
 1;

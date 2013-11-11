@@ -23,6 +23,7 @@ use strict;
 use base qw(Dashboard); # This class extends the Dashboard block class
 use v5.12;
 use Webperl::Utils qw(path_join);
+use Data::Dumper;
 
 # ============================================================================
 #  Repository/web related
@@ -241,6 +242,32 @@ sub _generate_web_publish {
 }
 
 
+## @method provate $ _generate_group_database($groups)
+# Generate a block containing the group database information for the user.
+#
+# @param groups A reference to a hash of group database information hashes.
+# @return A string containing the groups database block.
+sub _generate_group_database {
+    my $self     = shift;
+    my $groups   = shift || {};
+    my $groupstr = "";
+
+    my $dbnum = 1;
+    foreach my $database (sort keys(%{$groups})) {
+        next if($database eq "_internal" || !$groups -> {$database} -> {"active"});
+
+        $groupstr .= $self -> {"template"} -> load_template("dashboard/db/grouprow.tem", {"***database***" => $database,
+                                                                                          "***num***"      => $dbnum})
+    }
+
+    return $self -> {"template"} -> load_template("dashboard/db/groups.tem", {"***rows***" => $groupstr})
+        if($groupstr);
+
+    return $self -> {"template"} -> load_template("dashboard/db/nogroups.tem");
+}
+
+
+
 ## @method private $ _generate_database($user, $args)
 # Generate a block containing the information about/options for the user
 # related to their database and/or group databases.
@@ -255,12 +282,23 @@ sub _generate_database {
     my $args = shift;
 
     # Does the user have a database?
-    my $user_hasdb = $self -> {"system"} -> {"databases"} ->user_database_exists($user -> {"username"});
+    my $user_hasdb = $self -> {"system"} -> {"databases"} -> user_database_exists($user -> {"username"});
     if(!$user_hasdb) {
         return $self -> {"template"} -> load_template("dashboard/db/nodb.tem", {"***form_url***"  => $self -> build_url(block => "manage", "pathinfo" => [ "newdb" ])});
     } else {
+        # Get the list of group databases the user should have access to
+        my $groups = $self -> {"system"} -> {"userdata"} -> get_user_groupnames($user -> {"username"});
+
+        my $groupdbs = $self -> {"system"} -> {"databases"} -> set_user_group_databases($user -> {"username"}, $groups)
+            if($groups);
+
+        # Update the config file if there have been changes.
+        $self -> {"system"} -> {"git"} -> write_config($user -> {"username"})
+            if($groupdbs && $groupdbs -> {"_internal"} -> {"save_config"});
+
         return $self -> {"template"} -> load_template("dashboard/db/db.tem"  , {"***username***" => lc($user -> {"username"}),
                                                                                 "***password***" => "{L_DATABASE_PASSWORD_COPOUT}",
+                                                                                "***groups***"   => $self -> _generate_group_database($groupdbs),
                                                       });
     }
 }

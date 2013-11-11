@@ -51,7 +51,7 @@ sub new {
 
 
 # ============================================================================
-#  Checking code
+#  Utility
 
 ## @method $ safe_username($username)
 # Determine whether the specified username is safe, return an untainted version
@@ -74,6 +74,21 @@ sub safe_username {
     return $self -> self_error("Username '$username' contains illegal characters") if(!$safename);
 
     return $safename;
+}
+
+
+## @method void log($type, $message)
+# Log the current user's actions in the system. This is a convenience wrapper around the
+# Logger::log function.
+#
+# @param type     The type of log entry to make, may be up to 64 characters long.
+# @param message  The message to attach to the log entry, avoid messages over 128 characters.
+sub log {
+    my $self     = shift;
+    my $type     = shift;
+    my $message  = shift;
+
+    $self -> {"logger"} -> log($type, 0, undef, $message);
 }
 
 
@@ -110,7 +125,7 @@ sub user_database_exists {
     return 0 if($usercount -> [0] < scalar(@{$self -> {"allowed_hosts"}}));
 
     # Now check that the user's database exists
-    return $self -> _user_database_exists($username);
+    return $self -> _database_exists($username);
 }
 
 
@@ -130,6 +145,8 @@ sub setup_user_account {
     my $username = $self -> safe_username($user -> {"username"})
         or return undef;
 
+    $self -> log("database", "Setting up user account for $username");
+
     $self -> create_user_account($username, $password)
         or return undef;
 
@@ -141,6 +158,8 @@ sub setup_user_account {
 
     $self -> store_user_password($user -> {"user_id"}, $password)
         or return undef;
+
+    $self -> log("database", "Completed user account for $username");
 
     return 1;
 }
@@ -187,7 +206,7 @@ sub create_user_database {
         or return undef;
 
     foreach my $host (@{$self -> {"allowed_hosts"}}) {
-        $self -> _create_database($username, $host)
+        $self -> _create_user_database($username, $host)
             or return undef;
     }
 
@@ -295,6 +314,99 @@ sub get_user_password {
 
 
 # ============================================================================
+#  Group database related
+
+
+## @method $ get_user_group_databases($username)
+# Obtain a list of group databases the specified user has access to. This will
+# check the 'mysql.db' table for the list of databases the user can access, and
+# filter out the user's own database.
+#
+# @param username The name of the user to fetch the database list for
+# @return A reference to a hash containing the group databases the user has
+#         access to, each database also includes a subhash indicating which hosts
+#         the user can access it from.
+sub get_user_group_databases {
+    my $self     = shift;
+    my $username = shift;
+
+    $self -> clear_error();
+
+    $username = $self -> safe_username($username)
+        or return undef;
+
+    # We're interested in any databases the user has access to that do not have the same
+    # name as the username (ie: not personal databases)
+    my $grouph = $self -> {"user_dbh"} -> prepare("SELECT Host,Db
+                                                   FROM `db`
+                                                   WHERE `User` = ?
+                                                   ANd `Db` != `User`");
+    $grouph -> execute($username)
+        or return $self -> self_error("Unable to execute database list lookup");
+
+    my $grouphash = {};
+    # convert the results to a has for faster lookups
+    while(my $group = $grouph -> fetchrow_hashref()) {
+        $grouphash -> {$group -> {"Db"}} -> {$group -> {"Host"}} -> {"access"} = 1;
+    }
+
+    return $grouphash;
+}
+
+
+## @method $ set_user_group_databases($username, $grouplist)
+# Ensure that the specified user has access to the provided group databases, and
+# remove access from any group databases the user should not have access to.
+#
+# @param username  The username of the user to set the group database access for.
+# @param grouplist A reference to a list of group database names.
+# @return A reference to a hash containing the database access information, undef on error.
+sub set_user_group_databases {
+    my $self      = shift;
+    my $username  = shift;
+    my $grouplist = shift;
+    my @newdbs    = ();
+
+    $self -> clear_error();
+
+    $self -> log("database", "Updating group database accounts for $username");
+
+    $username = $self -> safe_username($username)
+        or return undef;
+
+    # first find out which databases the user has access to
+    my $groups = $self -> get_user_group_databases($username)
+        or return undef;
+
+    # Now check through the list of groups the user /should/ have access to. If
+    # the database doesn't exist at all, it needs to be created, then the user
+    # access from all allowed hosts to that database need to be checked
+    foreach my $groupname (@{$grouplist}) {
+        $self -> _set_group_database($username, $groupname, $groups)
+            or return undef;
+    }
+
+    # now go through the list of group databases the user has access to,
+    # removing access to databases they no longer should be able see
+    foreach my $database (keys(%{$groups})) {
+        next if($database eq "_internal");
+
+        foreach my $host (@{$self -> {"allowed_hosts"}}) {
+            next if($groups -> {$database} -> {"active"}); # Keep access to active groups
+
+            $self -> log("database", "Removing access to $database from $username\@$host");
+            $self -> _revoke_all($database, $username, $host)
+                or return undef;
+
+            $groups -> {"_internal"} -> {"save_config"} = 1; # mark the need to save the config
+        }
+    }
+
+    return $groups;
+}
+
+
+# ============================================================================
 #  Private and ghastly internals
 
 
@@ -324,19 +436,19 @@ sub _get_user_account {
 }
 
 
-## @method private $ _user_database_exists($username)
-# Determine whether a database for the specified name exists in the system.
+## @method private $ _database_exists($dbname)
+# Determine whether a database with the specified name exists in the system.
 #
-# @param username The username to determine whether a database exists for.
+# @param dbname The name of the database to check the existence of.
 # @return true if the database exists, false if it does not, undef on error.
-sub _user_database_exists {
+sub _database_exists {
     my $self     = shift;
-    my $username = shift;
+    my $dbname = shift;
 
     $self -> clear_error();
 
     my $datah = $self -> {"user_dbh"} -> prepare("SHOW DATABASES LIKE ?");
-    $datah -> execute($username)
+    $datah -> execute($dbname)
         or return $self -> self_error("Unable to perform user check: ".$self -> {"user_dbh"} -> errstr);
 
     my $database = $datah -> fetchrow_arrayref();
@@ -365,6 +477,8 @@ sub _create_update_user {
         or return undef;
 
     if($user -> {"User"}) {
+        $self -> log("database", "Updating account for $username\@$host");
+
         # User exists, need to update the password.
         my $passh = $self -> {"user_dbh"} -> prepare("UPDATE `user`
                                                       SET `Password` = PASSWORD(?)
@@ -375,6 +489,8 @@ sub _create_update_user {
         return $self -> self_error("User update failed: no rows updated") if($result eq "0E0");
 
     } else {
+        $self -> log("database", "Creating account for $username\@$host");
+
         # User does not exist, create the account
         my $acch = $self -> {"user_dbh"} -> prepare('CREATE USER ?@? IDENTIFIED BY ?');
         $acch -> execute($username, $host, $password)
@@ -392,6 +508,8 @@ sub _create_update_user {
     my $granth = $self -> {"user_dbh"} -> prepare('GRANT USAGE ON *.* TO ?@? WITH MAX_USER_CONNECTIONS 2');
     $granth -> execute($username, $host)
         or return $self -> self_error("Unable to grant usage rights to user account: ".$self -> {"user_dbh"} -> errstr);
+
+    $self -> log("database", "Account for $username\@$host set up");
 
     return 1;
 }
@@ -411,6 +529,7 @@ sub _delete_user {
     my $host     = shift;
 
     $self -> clear_error();
+    $self -> log("database", "Deleting user account $username\@$host");
 
     my $nukeh = $self -> {"user_dbh"} -> prepare('DROP USER ?@?');
     $nukeh -> execute($username, $host)
@@ -420,7 +539,35 @@ sub _delete_user {
 }
 
 
-## @method private $ _create_database($username, $host)
+## @method private $ _create_database(name)
+# Create a database with the specified name.
+#
+# @param name The name of the database to create.
+# @return true on success, undef on error
+sub _create_database {
+    my $self = shift;
+    my $name = shift;
+
+    $self -> clear_error();
+    $self -> log("database", "Creating database $name");
+
+    # Create the database...
+    my $newh = $self -> {"user_dbh"} -> prepare("CREATE DATABASE IF NOT EXISTS `$name`
+                                                     DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci");
+    $newh -> execute()
+        or return $self -> self_error("Unable to create database '$name': ".$self -> {"user_dbh"} -> errstr);
+
+    # Make sure it exists....
+    return $self -> self_error("Creation of database failed, please try again later.")
+        if(!$self -> _database_exists($name));
+
+    $self -> log("database", "Database $name created");
+
+    return 1;
+}
+
+
+## @method private $ _create_user_database($username, $host)
 # Create a database for the specified user if it does not exist, and
 # grant access to the user from the specified host.
 #
@@ -428,49 +575,151 @@ sub _delete_user {
 #                 Must have been passed through safe_username() first!
 # @param host     The host to use for the user.
 # @return true on success, undef on error.
-sub _create_database {
+sub _create_user_database {
     my $self     = shift;
     my $username = shift;
     my $host     = shift;
 
     $self -> clear_error();
 
-    # Does the database already exist?
-    if(!$self -> _user_database_exists($username)) {
-        # Create the database...
-        my $newh = $self -> {"user_dbh"} -> prepare("CREATE DATABASE IF NOT EXISTS `$username`
-                                                     DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci");
-        $newh -> execute()
-            or return $self -> self_error("Unable to create database for $username: ".$self -> {"user_dbh"} -> errstr);
-
-        # Make sure it exists....
-        return $self -> self_error("Creation of user database failed, please try again later.")
-            if(!$self -> _user_database_exists($username));
-    }
+    # Create the database if it doesn't exist.
+    $self -> _create_database($username) or return undef
+        unless($self -> _database_exists($username));
 
     # Now give the user access
-    my $accessh = $self -> {"user_dbh"} -> prepare("GRANT ALL PRIVILEGES ON `$username`.* TO ?\@?");
-    $accessh -> execute($username, $host)
-        or return $self -> self_error("Unable to grant access to database for $username: ".$self -> {"user_dbh"} -> errstr);
+    $self -> _grant_all($username, $username, $host)
+        or return undef;
 
     return 1;
 }
 
 
-## @method private $ _delete_database($username)
+## @method private $ _delete_database($name)
 # Delete the specified database from the system. Use with caution.
 #
-# @param username The name of the user to delete the database for.
-# @return true on nukeage, false otherwise
+# @param name The name of the database to delete.
+# @return true if the database was deleted (or did not exist!), false otherwise
 sub _delete_database {
-    my $self     = shift;
-    my $username = shift;
+    my $self = shift;
+    my $name = shift;
 
     $self -> clear_error();
 
-    my $nukeh = $self -> {"user_dbh"} -> prepare("DROP DATABASE IF EXISTS `$username`");
+    $self -> log("database", "Deleting database $name");
+
+    my $nukeh = $self -> {"user_dbh"} -> prepare("DROP DATABASE IF EXISTS `$name`");
     $nukeh -> execute()
         or return $self -> self_error("Unable to remove user database: ".$self -> {"user_dbh"} -> errstr);
+
+    return 1;
+}
+
+
+## @method private $ _set_group_database($username, $groupname, $grouphash)
+# Grant the specified user access to the database for the specified group. This will
+# create the group database if it does not exist, and give the user access to it
+# (if the user does not exist, they will get access as soon as their account is
+# created). If the user already has access to the group database, this simply
+# records the access as current and returns. The specified group hash should be
+# of the form
+#
+# { databasename => { hostname => { access => 0|1 (1 if the user has access from this host, 0 if not)
+#                                 },
+#                     hostname => { access => 0|1
+#                                 },
+#                   },
+#   etc...
+# }
+#
+# During this function, the access flag for each allowed host may be updated to
+# reflect whether the user has access. This will also set a 'created' flag if the
+# datbase is created by setting grouphash -> {groupname} -> {"created"} to true.
+# This will also mark each database -> {hostname} -> {"active"} to true when
+# called for a given database.
+#
+# @param username  The name of the user to grant access to.
+# @param groupname The name of the group database to give the user access to.
+# @param grouphash A reference to a hash containing group database info,
+#                  as generated by the get_user_group_databases() function.
+# @return true on success, undef on error.
+sub _set_group_database {
+    my $self      = shift;
+    my $username  = shift;
+    my $groupname = shift;
+    my $grouphash = shift;
+
+    $self -> clear_error();
+
+    $self -> log("database", "Granting access to $groupname for $username");
+
+    # does the database exist? If not, make it
+    if(!$self -> _database_exists($groupname)) {
+        $self -> _create_database($groupname)
+            or return undef;
+
+        # record that the database was created so it can be populated later if needed
+        $grouphash -> {$groupname} -> {"created"} = 1;
+    }
+
+    # Does the user have access from each host?
+    foreach my $host (@{$self -> {"allowed_hosts"}}) {
+        if(!$grouphash -> {$groupname} -> {$host} -> {"access"}) {
+            $self -> _grant_all($groupname, $username, $host)
+                or return undef;
+
+            $grouphash -> {$groupname} -> {$host} -> {"access"} = 1;
+            $grouphash -> {"_internal"} -> {"save_config"} = 1; # mark the need to save the config
+        }
+
+        # Mark the access as current, so old access can be revoked
+        $grouphash -> {$groupname} -> {"active"} = 1;
+    }
+
+    return 1;
+}
+
+
+## @method private $ _grant_all($database, $username, $host)
+# Give all privileges on the specified database to the provided user.
+#
+# @param database The name of the database to grant access to.
+# @param username The name of the user to give the access to.
+# @param host     The host the user is connecting from.
+# @return true on success, undef on error
+sub _grant_all {
+    my $self     = shift;
+    my $database = shift;
+    my $username = shift;
+    my $host     = shift;
+
+    $self -> log("database", "Granting all privileges on $database to $username\@$host");
+
+    my $accessh = $self -> {"user_dbh"} -> prepare("GRANT ALL PRIVILEGES ON `$database`.* TO ?\@?");
+    $accessh -> execute($username, $host)
+        or return $self -> self_error("Unable to grant access to $database for $username: ".$self -> {"user_dbh"} -> errstr);
+
+    return 1;
+}
+
+
+## @method private $ _revoke_all($database, $username, $host)
+# Remove all privileges on the specified database from the provided user.
+#
+# @param database The name of the database to remove access to.
+# @param username The name of the user to remove the access from.
+# @param host     The host the user is connecting from.
+# @return true on success, undef on error
+sub _revoke_all {
+    my $self     = shift;
+    my $database = shift;
+    my $username = shift;
+    my $host     = shift;
+
+    $self -> log("database", "Revoking all privileges on $database from $username\@$host");
+
+    my $accessh = $self -> {"user_dbh"} -> prepare("REVOKE ALL PRIVILEGES ON `$database`.* FROM ?\@?");
+    $accessh -> execute($username, $host)
+        or return $self -> self_error("Unable to revoke access to $database from $username: ".$self -> {"user_dbh"} -> errstr);
 
     return 1;
 }

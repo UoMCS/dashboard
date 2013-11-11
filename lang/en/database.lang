@@ -24,3 +24,6 @@ DATABASE_CHANGE_SUCCESS  = Update successful. Your database password has been ch
 
 DATABASE_NUKE_CONFIRM    = Are you <em>absolutely</em> sure that you want to delete your database account? If you do this, all data currently in your database will be permanently erased and can not be recovered, and you will need to create a new account if you need your database in the future.<br /><br />Note that the status of any group databases will not be affected if you delete your account.
 DATABASE_NUKE_SUCCESS    = Delete successful. Your database and database user account have been deleted.
+
+DATABASE_GROUPS          = Group databases
+DATABASE_GROUPINFO       = You also have access to the following group databases. In order to use one of the group databases, connect using your normal database account username and password, but connect to the group database rather than your own.
