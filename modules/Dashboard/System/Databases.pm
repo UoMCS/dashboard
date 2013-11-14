@@ -316,6 +316,50 @@ sub get_user_password {
 # ============================================================================
 #  Group database related
 
+## @method $ populate_group_database($groupdb)
+# Attempt to populate the specified group database from a mysql script. This will
+# extract the course name from the specified group database name, determine
+# whether a script exists for that course, and if so it will run the script.
+#
+# @note This should only be called immediately after database creation. Calling
+#       it more than once may result in user data loss or errors.
+#
+# @param groupdb The name of the group database to populate.
+# @return true on success, undef on error.
+sub populate_group_database {
+    my $self    = shift;
+    my $groupdb = shift;
+
+    $self -> clear_error();
+
+    # Pull out the course
+    my ($course) = $groupdb =~ /^\d+_([a-z0-9]+)_\w+$/;
+    return $self -> self_error("Unable to parse course name from group database '$groupdb'")
+        unless($course);
+
+    # does a script exist for the course?
+    my $script = path_join($self -> {"settings"} -> {"config"} -> {"base"},
+                           $self -> {"settings"} -> {"userdatabase"} -> {"grouppath"},
+                           $course.".sql");
+    if(-f $script) {
+        # Script exists, run it
+        my $cmd = $self -> {"settings"} -> {"userdatabase"} -> {"runscript"};
+        $cmd =~ s/%d/$groupdb/;
+        $cmd =~ s/%f/$script/;
+
+        my $output = `$cmd`;
+        if($output) {
+            $self -> log("database", "Error running script for $groupdb: $output");
+            return $self -> self_error("Unable to execute mysql script. Please report this error!");
+        }
+
+    } else {
+        $self -> log("database", "No initialiser script for $groupdb ($script not found)");
+    }
+
+    return 1;
+}
+
 
 ## @method $ get_user_group_databases($username)
 # Obtain a list of group databases the specified user has access to. This will
@@ -659,6 +703,10 @@ sub _set_group_database {
 
         # record that the database was created so it can be populated later if needed
         $grouphash -> {$groupname} -> {"created"} = 1;
+
+        # Run the populate script if needed
+        $self -> populate_group_database($groupname)
+            or return undef;
     }
 
     # Does the user have access from each host?
