@@ -26,12 +26,13 @@ use Webperl::Utils qw(path_join blind_untaint save_file);
 use Git::Repository;
 use v5.12;
 
+
 ## @method $ user_web_repo_exists($username)
 # Determine whether a repo exists in the standard web directory for the
 # specified user.
 #
 # @param username The username of the user to search for a repo for.
-# @return The origin of the repo if the repo exists, false otherwise,
+# @return A reference to an array of repository descriptions on success,
 #         undef on error.
 sub user_web_repo_exists {
     my $self     = shift;
@@ -39,16 +40,30 @@ sub user_web_repo_exists {
 
     $self -> clear_error();
 
-    # Path to the user's config file, if it exists
-    my $config = path_join($self -> {"settings"} -> {"git"} -> {"webbasedir"}, $username, ".git", "config");
+    # Can't do anything if there's no user directory
+    my $userpath = path_join($self -> {"settings"} -> {"git"} -> {"webbasedir"}, $username);
+    return undef if(!-d $userpath);
 
-    return 0 if(!-f $config);
+    # First check in the base directory
+    my $reposdata = $self -> _parse_git_config($username);
+    return [ $reposdata ] if($reposdata);
 
-    # Hey, what do you know, ConfigMicro can parse git configs!
-    my $settings = Webperl::ConfigMicro -> new($config)
-        or return $self -> self_error("Repository check failed: ".$Webperl::SystemModule::errstr);
+    # No repository in the base, scan for subdirs
+    opendir(USERDIR, $userpath)
+        or return $self -> self_error("Unable to open userpath for $username: $!");
+    my @entries = readdir(USERDIR);
+    closedir(USERDIR);
 
-    return $settings -> {'remote "origin"'} -> {"url"};
+    my @repos;
+    foreach my $entry (@entries) {
+        next if($entry =~ /^\.*$/ || !-d $entry);
+
+        $reposdata = $self -> _parse_git_config($username, $entry);
+        push(@repos, $reposdata)
+            if($reposdata);
+    }
+
+    return \@repos;
 }
 
 
@@ -253,6 +268,33 @@ sub _write_config_file {
     }
 
     return 1;
+}
+
+
+## @method private $ _parse_git_config($username, $subdir)
+# Parse the specified git config, and return a hash containing the
+# config information pertinent to Dashboard.
+#
+# @param username The name of the user to look for a repository for.
+# @param subdir   The subdirectory to look in for a .git directory.
+# @return A reference to a hash if a git repository is found, undef if
+#         it is not (or an error occurred)
+sub _parse_git_config {
+    my $self     = shift;
+    my $username = shift;
+    my $subdir   = shift;
+
+    my $config = path_join($self -> {"settings"} -> {"git"} -> {"webbasedir"}, $username, $subdir, ".git", "config");
+    return undef if(!-f $config);
+
+    # Hey, what do you know, ConfigMicro can parse git configs!
+    my $settings = Webperl::ConfigMicro -> new($config)
+        or return $self -> self_error("Repository check failed: ".$Webperl::SystemModule::errstr);
+
+    return { "origin" => $settings -> {'remote "origin"'} -> {"url"},
+             "subdir" => $subdir,
+             "path"   => path_join($username, $subdir)
+           };
 }
 
 1;

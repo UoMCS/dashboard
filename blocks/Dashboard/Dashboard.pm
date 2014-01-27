@@ -47,6 +47,11 @@ sub _validate_repository_fields {
                                                                 });
     $errors .= $self -> {"template"} -> load_template("error/error_item.tem", {"***error***" => $error}) if($error);
 
+    ($args -> {"web-path"}, $error) = $self -> validate_string("web-path", {"required" => 0,
+                                                                            "nicename" => $self -> {"template"} -> replace_langvar("WEBSITE_PATH"),
+                                                                });
+    $errors .= $self -> {"template"} -> load_template("error/error_item.tem", {"***error***" => $error}) if($error);
+
     # Force .git on the end of the url
     if($args -> {"web-repos"}) {
         $errors .= $self -> {"template"} -> load_template("error/error_item.tem", {"***error***" => "{L_WEBSITE_NEEDGIT}"})
@@ -229,10 +234,27 @@ sub _generate_web_publish {
     # First up, does the user have an existing repository in place?
     my $repos = $self -> {"system"} -> {"git"} -> user_web_repo_exists($user -> {"username"});
     return $self -> {"template"} -> load_template("dashboard/web/norepo.tem", {"***web-repos***" => $args -> {"web-repos"},
-                                                                               "***form_url***"  => $self -> build_url(block => "manage", "pathinfo" => [ "setrepos" ])})
-        if(!$repos);# || !scalar(@{$repos}));
+                                                                               "***form_url***"  => $self -> build_url(block => "manage", "pathinfo" => [ "addrepos" ])})
+        if(!$repos || !scalar(@{$repos}));
 
-    return $self -> {"template"} -> load_template("dashboard/web/repo.tem"  , {"***web-repos***" => $repos,
+
+    my $rlist = "";
+    my $hasroot = 0;
+    foreach my $entry (@{$repos}) {
+        $rlist .= $self -> {"template"} -> load_template("dashboard/web/repo-row.tem", {"***url***"     => path_join($self -> {"settings"} -> {"git"} -> {"webbaseurl"}, lc($user -> {"username"}), $entry -> {"subdir"},"/"),
+                                                                                        "***subdir***"  => path_join($self -> {"settings"} -> {"git"} -> {"webbaseurl"}, lc($user -> {"username"}), $entry -> {"subdir"},"/"),
+                                                                                        "***id***"      => $entry -> {"subdir"} || "-",
+                                                                                        "***source***"  => $entry -> {"origin"} });
+        $hasroot = 1 if(!$entry -> {"subdir"});
+    }
+
+    my $addform = $self -> {"template"} -> load_template("dashboard/web/addform_".($hasroot ? "gotroot.tem" : "noroot.tem"),
+                                                         { "***web-repos***" => $args -> {"web-repos"},
+                                                           "***web-path***"  => $args -> {"web-path"},
+                                                           "***form_url***"  => $self -> build_url(block => "manage", "pathinfo" => [ "addrepos" ])});
+
+    return $self -> {"template"} -> load_template("dashboard/web/repo.tem"  , {"***repos***"     => $rlist,
+                                                                               "***addform***"   => $addform,
                                                                                "***web_url***"   => path_join($self -> {"settings"} -> {"git"} -> {"webbaseurl"}, lc($user -> {"username"}),"/"),
                                                                                "***pull_url***"  => $self -> build_url(block => "manage", "pathinfo" => [ "pullrepos" ]),
                                                                                "***nuke_url***"  => $self -> build_url(block => "manage", "pathinfo" => [ "nukerepos" ]),

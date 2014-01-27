@@ -45,3 +45,88 @@ dl.input > dd > input[type="radio"] {
 img.workspin {
     opacity: 0;
 }
+
+div.content h3 {
+    font-size: 13px;
+    font-weight: bold;
+    border-bottom: 1px dotted #666;
+    margin: 10px 0px 2px 0px;
+    color: #005678;
+}
+
+table.listtable {
+    width: 100%;
+}
+
+table.listtable tr td, table.listtable tr th {
+    border-bottom: 1px solid #ddd;
+    padding: 7px 3px;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+table.listtable tr:last-child td {
+    border-bottom: none;
+}
+
+table.listtable tr td.controls {
+    width: 128px;
+    padding: 0px;
+}
+
+table.listtable tr td.controls ul.controls {
+    display: none;
+/*    float: right;*/
+}
+
+table.listtable tr:hover td.controls ul.controls {
+    display: inline-block;
+}
+
+.control.update {
+    background-position: 0px 0px;
+}
+
+.control.update.ctrldisabled {
+    background-position: 0px -16px;
+}
+
+.control.update:hover {
+    background-position: 0px -32px;
+}
+
+.control.remote {
+    background-position: -16px 0px;
+}
+
+.control.remote.ctrldisabled {
+    background-position: -16px -16px;
+}
+
+.control.remote:hover {
+    background-position: -16px -32px;
+}
+
+.control.delete {
+    background-position: -32px 0px;
+}
+
+.control.delete.ctrldisabled {
+    background-position: -32px -16px;
+}
+
+.control.delete:hover {
+    background-position: -32px -32px;
+}
+
+.control.change {
+    background-position: -48px 0px;
+}
+
+.control.change.ctrldisabled {
+    background-position: -48px -16px;
+}
+
+.control.change:hover {
+    background-position: -48px -32px;
+}

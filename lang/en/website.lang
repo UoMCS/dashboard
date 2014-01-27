@@ -3,12 +3,19 @@ WEBSITE_NOREPOS    = You do not currently have a published website. Please enter
 WEBSITE_NOTES      = Note that, when your project is published, if it contains a <code>.htaccess</code> file, this file will be overwritten by a system-standard file. In addition, the publish mechanism will also generate a <code>config.inc.php</code> file in your web directory containing your database credentials if you have any.
 WEBSITE_REPOS      = Git project
 WEBSITE_REPOSEG    = https://gitlab.cs.man.ac.uk/your.username/project.git
+WEBSITE_PATH       = Subdirectory
+WEBSITE_PATHEG     = project_dir
 
 WEBSITE_REPOS_ERRDESC = You must provide the <code>https://</code> URL of a public git project to use as your website. <code>ssh://</code> URLs are not accepted.
 WEBSITE_NEEDGIT    = The URL of the git project to use as your website must end in <code>.git</code>.
 
-WEBSITE_GOTREPOS   = Your website has been published based on the contents of the project given below. Whenever you update the project, you will need to press the "Update" button below to fetch the latest changes.
-WEBSITE_LOCATION   = Your website is accessible at the following location:
+WEBSITE_GOTREPOS   = This is a list of your currently published websites. You can manage them using the options in the 'controls' column for each website.
+WEBSITE_PUBLISH    = Publish project
+WEBSITE_LOCATION   = Loction
+WEBSITE_SOURCE     = Git project
+WEBSITE_CONTROLS   = Controls
+
+WEBSITE_ADD_GOTROOT = You can not publish any more projects because you have published a project at the root of your web space. To publish more than one project you must delete the above project, and publish all projects into subdirectories of your web space.
 
 WEBSITE_SETREPOS    = Publish project
 WEBSITE_PULLREPOS   = Update
