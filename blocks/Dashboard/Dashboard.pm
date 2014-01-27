@@ -227,18 +227,18 @@ sub _generate_web_publish {
     my $args = shift;
 
     # First up, does the user have an existing repository in place?
-    my $origin = $self -> {"system"} -> {"git"} -> user_web_repo_exists($user -> {"username"});
-    if(!$origin) {
-        return $self -> {"template"} -> load_template("dashboard/web/norepo.tem", {"***web-repos***" => $args -> {"web-repos"},
-                                                                                   "***form_url***"  => $self -> build_url(block => "manage", "pathinfo" => [ "setrepos" ])});
-    } else {
-        return $self -> {"template"} -> load_template("dashboard/web/repo.tem"  , {"***web-repos***" => $origin,
-                                                                                   "***web_url***"   => path_join($self -> {"settings"} -> {"git"} -> {"webbaseurl"}, lc($user -> {"username"}),"/"),
-                                                                                   "***pull_url***"  => $self -> build_url(block => "manage", "pathinfo" => [ "pullrepos" ]),
-                                                                                   "***nuke_url***"  => $self -> build_url(block => "manage", "pathinfo" => [ "nukerepos" ]),
-                                                                                   "***clone_url***" => $self -> build_url(block => "manage", "pathinfo" => [ "setrepos" ]),
-                                                      });
-    }
+    my $repos = $self -> {"system"} -> {"git"} -> user_web_repo_exists($user -> {"username"});
+    return $self -> {"template"} -> load_template("dashboard/web/norepo.tem", {"***web-repos***" => $args -> {"web-repos"},
+                                                                               "***form_url***"  => $self -> build_url(block => "manage", "pathinfo" => [ "setrepos" ])})
+        if(!$repos);# || !scalar(@{$repos}));
+
+    return $self -> {"template"} -> load_template("dashboard/web/repo.tem"  , {"***web-repos***" => $repos,
+                                                                               "***web_url***"   => path_join($self -> {"settings"} -> {"git"} -> {"webbaseurl"}, lc($user -> {"username"}),"/"),
+                                                                               "***pull_url***"  => $self -> build_url(block => "manage", "pathinfo" => [ "pullrepos" ]),
+                                                                               "***nuke_url***"  => $self -> build_url(block => "manage", "pathinfo" => [ "nukerepos" ]),
+                                                                               "***clone_url***" => $self -> build_url(block => "manage", "pathinfo" => [ "setrepos" ]),
+                                                  });
+
 }
 
 
@@ -265,7 +265,6 @@ sub _generate_group_database {
 
     return $self -> {"template"} -> load_template("dashboard/db/nogroups.tem");
 }
-
 
 
 ## @method private $ _generate_database($user, $args)

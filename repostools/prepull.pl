@@ -42,14 +42,18 @@ my $raw_username = $ARGV[0]
     or fatal_error("No username specified.");
 
 # Check and untaint in one go
-my ($username) = $raw_username =~/^([.\w]+)$/;
+my ($username) = $raw_username =~ /^([.\w]+)$/;
 fatal_error("Username is not valid")
     unless($username);
 
-print STDERR "Running prepull for $username";
+# Path can be optional
+my ($path) = $ARGV[1] =~ /^(\w+)$/
+    if($ARGV[1]);
+
+print STDERR "Running prepull for $username path $path";
 
 # Where should the directory be?
-my $userdir = path_join($settings -> {"git"} -> {"webbasedir"}, $username);
+my $userdir = path_join($settings -> {"git"} -> {"webbasedir"}, $username, $path);
 
 # And where should it go?
 my $tempdir = path_join($settings -> {"git"} -> {"webtempdir"}, $username);
@@ -71,7 +75,7 @@ if(-e $userdir) {
                 $repo -> run("checkout .htaccess");
             };
 
-            # The .htaccess can go, if it exists, as can the config file
+            # Remove the config if it exists
             unlink($config) if(-e $config);
         } else {
             fatal_error("User directory move failed: $!");

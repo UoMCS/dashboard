@@ -70,42 +70,48 @@ my $raw_username = $ARGV[0]
     or fatal_error("No username specified.");
 
 # Check and untaint in one go
-my ($username) = $raw_username =~/^([.\w]+)$/;
+my ($username) = $raw_username =~ /^([.\w]+)$/;
 fatal_error("Username is not valid")
     unless($username);
 
+# Path can be optional
+my ($path) = $ARGV[1] =~ /^(\w+)$/
+    if($ARGV[1]);
+
 # Where should the directory be?
-my $userdir = path_join($settings -> {"git"} -> {"webbasedir"}, $username);
+my $userbase = path_join($settings -> {"git"} -> {"webbasedir"}, $username);
+my $userdir  = path_join($userbase, $path);
 
 # And where should it go?
 my $tempdir = path_join($settings -> {"git"} -> {"webtempdir"}, $username);
 
 if(-e $tempdir) {
     if(-d $tempdir) {
-        my $htaccess = path_join($tempdir, ".htaccess");
-        my $config   = path_join($tempdir, "config.inc.php");
-        my $gitdir   = path_join($tempdir, ".git");
-
-        create_htaccess($htaccess, $userdir);
-
         # kill write on important files
         my ($user, $grp) = ($settings -> {"git"} -> {"webuser"}, $settings -> {"git"} -> {"webgroup"});
         my $res = `/bin/chown -R $user:$grp '$tempdir' 2>&1`;
         fatal_error("Unable to set owner: $res") if($res);
 
-        $res = `/bin/chmod -R o-w,g-w,u-w '$htaccess' '$gitdir' 2>&1`;
+        my $gitdir = path_join($tempdir, ".git");
+        $res = `/bin/chmod -R o-w,g-w,u-w '$gitdir' 2>&1`;
         fatal_error("Unable to complete setup: $res") if($res);
 
-        if(-e $config) {
-            $res = `/bin/chown -R $user:$grp '$config' 2>&1`;
-            fatal_error("Unable to set config owner: $res") if($res);
-
-            $res = `/bin/chmod -R o-w,g-w,u-w '$config' 2>&1`;
-            fatal_error("Unable to complete config setup: $res") if($res);
-        }
+        # make sure the userdir exists if the path is set
+        mkdir $userbase or fatal_error("Unable to create user directory: $!")
+            if($path && !-e $userbase);
 
         fatal_error("User directory move failed: $!")
             unless(rename $tempdir, $userdir);
+
+        # Force the htaccess
+        my $htaccess = path_join($userbase, ".htaccess");
+        create_htaccess($htaccess, $userdir);
+        $res = `/bin/chmod -R o-w,g-w,u-w '$htaccess' 2>&1`;
+        fatal_error("Unable to complete setup: $res") if($res);
+
+        $res = `/bin/chown -R $user:$grp '$htaccess' 2>&1`;
+        fatal_error("Unable to set htaccess owner: $res") if($res);
+
     } else {
         fatal_error("User directory does not appear to be a directory?");
     }

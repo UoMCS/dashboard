@@ -42,12 +42,16 @@ my $raw_username = $ARGV[0]
     or fatal_error("No username specified.");
 
 # Check and untaint in one go
-my ($username) = $raw_username =~/^([.\w]+)$/;
+my ($username) = $raw_username =~ /^([.\w]+)$/;
 fatal_error("Username is not valid")
     unless($username);
 
-# Where should the directory be?
-my $userdir = path_join($settings -> {"git"} -> {"webbasedir"}, $username);
+# Path can be optional
+my ($path) = $ARGV[1] =~ /^(\w+)$/
+    if($ARGV[1]);
+
+# Remove the published directory if it exists
+my $userdir = path_join($settings -> {"git"} -> {"webbasedir"}, $username, $path);
 
 if(-e $userdir) {
     my $res = `/bin/rm -rf $userdir`;
@@ -55,6 +59,7 @@ if(-e $userdir) {
         if($res);
 }
 
+# And remove the temp, just in case it is still there
 my $tempdir = path_join($settings -> {"git"} -> {"webtempdir"}, $username);
 
 if(-e $tempdir) {
