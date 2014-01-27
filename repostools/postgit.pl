@@ -97,8 +97,11 @@ if(-e $tempdir) {
         fatal_error("Unable to complete setup: $res") if($res);
 
         # make sure the userdir exists if the path is set
-        mkdir $userbase or fatal_error("Unable to create user directory: $!")
-            if($path && !-e $userbase);
+        if($path && !-e $userbase) {
+            mkdir $userbase or fatal_error("Unable to create user directory: $!");
+            my $res = `/bin/chown -R $user:$grp '$userbase' 2>&1`;
+            fatal_error("Unable to set owner: $res") if($res);
+        }
 
         fatal_error("User directory move failed: $!")
             unless(rename $tempdir, $userdir);

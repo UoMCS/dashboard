@@ -55,8 +55,8 @@ sub user_web_repo_exists {
     closedir(USERDIR);
 
     my @repos;
-    foreach my $entry (@entries) {
-        next if($entry =~ /^\.*$/ || !-d $entry);
+    foreach my $entry (sort @entries) {
+        next if($entry =~ /^\.*$/ || !-d path_join($userpath, $entry));
 
         $reposdata = $self -> _parse_git_config($username, $entry);
         push(@repos, $reposdata)
@@ -67,47 +67,57 @@ sub user_web_repo_exists {
 }
 
 
-## @method $ delete_repository($username)
+## @method $ delete_repository($username, $subdir)
 # Delete the repository associated with the specified user.
 #
 # @param username   The name of the user cloning the repository.
+# @param subdir     The subdir containing the repository to delete.
 # @return true on success, undef on error.
 sub delete_repository {
     my $self       = shift;
     my $username   = lc(shift);
+    my $subdir     = shift || "";
 
     $self -> clear_error();
 
     my ($safename) = $username =~/^([.\w]+)$/;
-    return $self -> self_error("Clone failed: illegal username specified") if(!$safename);
+    return $self -> self_error("Delete failed: illegal username specified") if(!$safename);
+
+    my ($safedir) = $subdir =~ /^(\w+)$/;
+    return $self -> self_error("Delete failed: illegal subdir specified") if(!defined($safedir));
 
     # perform the pre-clone step
-    my $res = `sudo $self->{settings}->{repostools}->{preclone} $safename`;
-    return $self -> self_error("Clone failed: $res") if($res);
+    my $res = `sudo $self->{settings}->{repostools}->{preclone} $safename $safedir`;
+    return $self -> self_error("Delete failed: $res") if($res);
 
     # that should actually be all that is needed...
     return 1;
 }
 
 
-## @method $ clone_repository($repository, $username)
+## @method $ clone_repository($repository, $username, $subdir)
 # Clone the specified repository and move it into the user's web space.
 #
 # @param repository The URL of the repository to clone.
 # @param username   The name of the user cloning the repository.
+# @param subdir     The name of the subdirectory to clone into.
 # @return true on success, undef on error.
 sub clone_repository {
     my $self       = shift;
     my $repository = shift;
     my $username   = lc(shift);
+    my $subdir     = shift || "";
 
     $self -> clear_error();
 
     my ($safename) = $username =~/^([.\w]+)$/;
     return $self -> self_error("Clone failed: illegal username specified") if(!$safename);
 
+    my ($safedir) = $subdir =~ /^(\w+)$/;
+    return $self -> self_error("Clone failed: illegal subdir specified") if(!defined($safedir));
+
     # perform the pre-clone step
-    my $res = `sudo $self->{settings}->{repostools}->{preclone} $safename`;
+    my $res = `sudo $self->{settings}->{repostools}->{preclone} $safename $safedir`;
     return $self -> self_error("Clone failed: $res") if($res);
 
     # Do the clone itself
@@ -121,57 +131,64 @@ sub clone_repository {
         return $self -> self_error("Clone failed: $err\n");
     }
 
-    $self -> _write_config_file($target, $username)
-        or return undef;
-
     # clone is complete, move the clone into position
-    $res = `sudo $self->{settings}->{repostools}->{postgit} $safename`;
+    $res = `sudo $self->{settings}->{repostools}->{postgit} $safename $safedir`;
     return $self -> self_error("Clone failed: $res") if($res);
+
+    $self -> _write_config_file(path_join($self -> {"settings"} -> {"git"} -> {"webbasedir"}, $safename), $username)
+        or return undef;
 
     return 1;
 }
 
 
-## @method private $ _pull_cleanup($target, $username, $safename)
+## @method private $ _pull_cleanup($target, $username, $safename, $safedir)
 # Clean up after a pull (whether successful or not).
 #
 # @param target   The target path for the temporary directory.
 # @param username The username of the user doing the pull
 # @param safename The safe name of the repository
+# @param safedir  The safe name of the subdirectory
 # @return true on success, undef on error.
 sub _pull_cleanup {
     my $self     = shift;
     my $target   = shift;
     my $username = shift;
     my $safename = shift;
+    my $safedir  = shift;
+
+    # pull is complete, move the repository into position
+    my $res = `sudo $self->{settings}->{repostools}->{postgit} $safename $safedir`;
+    return $self -> self_error("Pull failed: $res") if($res);
 
     $self -> _write_config_file($target, $username)
         or return undef;
-
-    # pull is complete, move the repository into position
-    my $res = `sudo $self->{settings}->{repostools}->{postgit} $safename`;
-    return $self -> self_error("Pull failed: $res") if($res);
 
     return 1;
 }
 
 
-## @method $ pull_repository($username)
+## @method $ pull_repository($username, $subdir)
 # Pull updates for the user's repository.
 #
 # @param username   The name of the user cloning the repository.
+# @param subdir     The name of the subdirectory to clone into.
 # @return true on success, undef on error.
 sub pull_repository {
     my $self       = shift;
     my $username   = lc(shift);
+    my $subdir     = shift || "";
 
     $self -> clear_error();
 
     my ($safename) = $username =~/^([.\w]+)$/;
     return $self -> self_error("Pull failed: illegal username specified") if(!$safename);
 
+    my ($safedir) = $subdir =~ /^(\w+)$/;
+    return $self -> self_error("Clone failed: illegal subdir specified") if(!defined($safedir));
+
     # perform the pre-pull step
-    my $res = `sudo $self->{settings}->{repostools}->{prepull} $safename`;
+    my $res = `sudo $self->{settings}->{repostools}->{prepull} $safename $safedir`;
     return $self -> self_error("Pull failed: $res") if($res);
 
     # Do the pull
@@ -181,8 +198,9 @@ sub pull_repository {
         $repo -> run("pull");
     };
 
+    my $basedir = path_join($self -> {"settings"} -> {"git"} -> {"webbasedir"}, $safename);
     if(my $err = $@) {
-        my $cleanup = $self -> _pull_cleanup($target, $username, $safename);
+        my $cleanup = $self -> _pull_cleanup($basedir, $username, $safename, $safedir);
 
         return $self -> self_error("Pull failed: unable to update from a private project. Make the project public and try again.")
             if($err =~ /could not read Username for/);
@@ -190,7 +208,7 @@ sub pull_repository {
         return $self -> self_error("Pull failed (git error): $err\n");
     }
 
-    return $self -> _pull_cleanup($target, $username, $safename);
+    return $self -> _pull_cleanup($basedir, $username, $safename, $safedir);
 }
 
 

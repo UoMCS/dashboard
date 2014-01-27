@@ -18,31 +18,31 @@ function form_protect(submit, spinner)
 /** Enable the buttons controlling features of the repository.
  *
  */
-function enable_repos_controls()
+function enable_repos_controls(id)
 {
-    if($('pulltoken'))
-        $('pulltoken').addEvent('click', function() { show_token(); }).removeClass('disabled');
+    if($('updatebtn-'+id))
+        $('updatebtn-'+id).addEvent('click', function() { show_token(); }).removeClass('disabled');
 
-    if($('pullrepos'))
-        $('pullrepos').addEvent('click', function() { update_repos(); }).removeClass('disabled');
+    if($('remotebtn-'+id))
+        $('remotebtn-'+id).addEvent('click', function() { update_repos(); }).removeClass('disabled');
 
-    if($('nukerepos'))
-        $('nukerepos').addEvent('click', function() { delete_repos(); }).removeClass('disabled');
+    if($('deletebtn-'+id))
+        $('deletebtn-'+id).addEvent('click', function() { delete_repos(); }).removeClass('disabled');
 
-    if($('newrepos'))
-        $('newrepos').addEvent('click', function() { change_repos(); }).removeClass('disabled');
+    if($('changebtn-'+id))
+        $('changebtn-'+id).addEvent('click', function() { change_repos(); }).removeClass('disabled');
 }
 
 
 /** Disable the buttons controlling features of the repository.
  *
  */
-function disable_repos_controls()
+function disable_repos_controls(id)
 {
-    $('pulltoken').removeEvents('click').addClass('disabled');
-    $('pullrepos').removeEvents('click').addClass('disabled');
-    $('nukerepos').removeEvents('click').addClass('disabled');
-    $('newrepos').removeEvents('click').addClass('disabled');
+    $('updatebtn-'+id).removeEvents('click').addClass('disabled');
+    $('deletebtn-'+id).removeEvents('click').addClass('disabled');
+    $('deletebtn-'+id).removeEvents('click').addClass('disabled');
+    $('changebtn-'+id).removeEvents('click').addClass('disabled');
 }
 
 
@@ -69,7 +69,7 @@ function disable_database_controls()
 }
 
 
-function show_token()
+function show_token(pathid)
 {
     if(updatelock) return false;
     updatelock = true;
@@ -78,7 +78,7 @@ function show_token()
                                  method: 'post',
                                  onRequest: function() {
                                      $('workspinner').fade('in');
-                                     disable_repos_controls();
+                                     disable_repos_controls(pathid);
                                  },
                                  onSuccess: function(respTree, respElems, respHTML) {
                                      var err = respHTML.match(/^<div id="apierror"/);
@@ -96,17 +96,17 @@ function show_token()
                                          popbox.open();
                                      }
                                      $('workspinner').fade('out');
-                                     enable_repos_controls();
+                                     enable_repos_controls(pathid);
                                      updatelock = false;
                                  }
                                });
-    req.post();
+    req.send({id: pathid});
 
     return false;
 }
 
 
-function update_repos()
+function update_repos(pathid)
 {
     if(updatelock) return false;
     updatelock = true;
@@ -115,7 +115,7 @@ function update_repos()
                                  method: 'post',
                                  onRequest: function() {
                                      $('workspinner').fade('in');
-                                     disable_repos_controls();
+                                     disable_repos_controls(pathid);
                                  },
                                  onSuccess: function(respTree, respElems, respHTML) {
                                      var err = respHTML.match(/^<div id="apierror"/);
@@ -138,17 +138,17 @@ function update_repos()
                                      }
 
                                      $('workspinner').fade('out');
-                                     enable_repos_controls();
+                                     enable_repos_controls(pathid);
                                      updatelock = false;
                                  }
                                });
-    req.post();
+    req.send({id: pathid});
 
     return false;
 }
 
 
-function delete_repos()
+function delete_repos(pathid)
 {
     if(updatelock) return false;
     updatelock = true;
@@ -157,7 +157,7 @@ function delete_repos()
                                  method: 'post',
                                  onRequest: function() {
                                      $('workspinner').fade('in');
-                                     disable_repos_controls();
+                                     disable_repos_controls(pathid);
                                  },
                                  onSuccess: function(respTree, respElems, respHTML) {
                                      var err = respHTML.match(/^<div id="apierror"/);
@@ -171,22 +171,22 @@ function delete_repos()
                                      } else {
                                          $('poptitle').set('text', respElems[0].get('text'));
                                          $('popbody').empty().grab(respElems[1]);
-                                         popbox.setButtons([{title: respElems[2].get('text'), color: 'red', event: function() { do_delete_repos() } },
+                                         popbox.setButtons([{title: respElems[2].get('text'), color: 'red', event: function() { do_delete_repos(pathid) } },
                                                             {title: respElems[3].get('text'), color: 'blue', event: function() { popbox.close(); }}]);
                                          popbox.open();
                                      }
                                      $('workspinner').fade('out');
-                                     enable_repos_controls();
+                                     enable_repos_controls(pathid);
                                      updatelock = false;
                                  }
                                });
-    req.post();
+    req.send({id: pathid});
 
     return false;
 }
 
 
-function do_delete_repos()
+function do_delete_repos(pathid)
 {
     if(updatelock) return false;
     updatelock = true;
@@ -195,7 +195,7 @@ function do_delete_repos()
                             method: 'post',
                             onRequest: function() {
                                 $('workspinner').fade('in');
-                                disable_repos_controls();
+                                disable_repos_controls(pathid);
                             },
                             onSuccess: function(respText, respXML) {
                                 var err = respXML.getElementsByTagName("error")[0];
@@ -212,17 +212,17 @@ function do_delete_repos()
                                         location.href = rup;
                                 }
                                 $('workspinner').fade('out');
-                                enable_repos_controls();
+                                enable_repos_controls(pathid);
                                 updatelock = false;
                             }
                           });
-    req.post();
+    req.send({id: pathid});
 
     return false;
 }
 
 
-function change_repos()
+function change_repos(pathid)
 {
     if(updatelock) return false;
     updatelock = true;
@@ -231,7 +231,7 @@ function change_repos()
                                  method: 'post',
                                  onRequest: function() {
                                      $('workspinner').fade('in');
-                                     disable_repos_controls();
+                                     disable_repos_controls(pathid);
                                  },
                                  onSuccess: function(respTree, respElems, respHTML) {
                                      var err = respHTML.match(/^<div id="apierror"/);
@@ -245,22 +245,22 @@ function change_repos()
                                      } else {
                                          $('poptitle').set('text', respTree[0].get('text'));
                                          $('popbody').empty().grab(respTree[2]); // will remove respTree[2]!
-                                         popbox.setButtons([{title: respTree[3].get('text'), color: 'red', event: function() { do_change_repos() } },
+                                         popbox.setButtons([{title: respTree[3].get('text'), color: 'red', event: function() { do_change_repos(pathid) } },
                                                             {title: respTree[5].get('text'), color: 'blue', event: function() { popbox.close(); }}]);
                                          popbox.open();
                                      }
                                      $('workspinner').fade('out');
-                                     enable_repos_controls();
+                                     enable_repos_controls(pathid);
                                      updatelock = false;
                                  }
                                });
-    req.post();
+    req.send();
 
     return false;
 }
 
 
-function do_change_repos()
+function do_change_repos(pathid)
 {
     if(updatelock) return false;
     updatelock = true;
@@ -269,7 +269,7 @@ function do_change_repos()
                             method: 'post',
                             onRequest: function() {
                                 $('workspinner').fade('in');
-                                disable_repos_controls();
+                                disable_repos_controls(pathid);
                             },
                             onSuccess: function(respText, respXML) {
                                 var err = respXML.getElementsByTagName("error")[0];
@@ -286,11 +286,12 @@ function do_change_repos()
                                         location.href = rup;
                                 }
                                 $('workspinner').fade('out');
-                                enable_repos_controls();
+                                enable_repos_controls(pathid);
                                 updatelock = false;
                             }
                           });
-    req.post({'web-repos': $('web-repos').get('value')});
+    req.send({'web-repos': $('web-repos').get('value'),
+              id: pathid});
 
     return false;
 }
@@ -328,7 +329,7 @@ function change_password()
                                      updatelock = false;
                                  }
                                });
-    req.post();
+    req.send();
 
     return false;
 }
@@ -364,7 +365,7 @@ function do_change_password()
                                 updatelock = false;
                             }
                           });
-    req.post({'db-pass': $('db-pass').get('value'),
+    req.send({'db-pass': $('db-pass').get('value'),
               'db-conf': $('db-conf').get('value')});
 
     return false;
@@ -403,7 +404,7 @@ function delete_database()
                                      updatelock = false;
                                  }
                                });
-    req.post();
+    req.send();
 
     return false;
 }
@@ -438,7 +439,7 @@ function do_delete_database()
                                 updatelock = false;
                             }
                           });
-    req.post();
+    req.send();
 
     return false;
 }
@@ -452,7 +453,6 @@ window.addEvent('domready', function()
     if($('notebox'))
         setTimeout(function() { $('notebox').dissolve() }, 8000);
 
-    enable_repos_controls();
     enable_database_controls();
 
     $$('a.rel').each(function(element) {

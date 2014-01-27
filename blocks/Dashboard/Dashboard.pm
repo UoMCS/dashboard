@@ -82,7 +82,7 @@ sub _validate_repository {
     $self -> log("repository", "Cloning ".$args -> {"web-repos"}." to ".$user -> {"username"});
 
     # The respository appears to be valid, do the clone
-    $self -> {"system"} -> {"git"} -> clone_repository($args -> {"web-repos"}, $user -> {"username"})
+    $self -> {"system"} -> {"git"} -> clone_repository($args -> {"web-repos"}, $user -> {"username"}, $args -> {"web-path"})
         or return ($self -> {"template"} -> load_template("error/error_list.tem", {"***message***" => "{L_WEBSITE_CLONE_FAIL}",
                                                                                    "***errors***"  => $self -> {"template"} -> load_template("error/error_item.tem",
                                                                                                                                              {"***error***" => $self -> {"system"} -> {"git"} -> errstr(),
@@ -105,7 +105,7 @@ sub _validate_repository {
 #
 # @return Two strings, the first containing the page title, the second containing the
 #         page content.
-sub _set_repository {
+sub _add_repository {
     my $self = shift;
     my $error = "";
     my $args  = {};
@@ -234,6 +234,7 @@ sub _generate_web_publish {
     # First up, does the user have an existing repository in place?
     my $repos = $self -> {"system"} -> {"git"} -> user_web_repo_exists($user -> {"username"});
     return $self -> {"template"} -> load_template("dashboard/web/norepo.tem", {"***web-repos***" => $args -> {"web-repos"},
+                                                                               "***web-path***"  => $args -> {"web-path"},
                                                                                "***form_url***"  => $self -> build_url(block => "manage", "pathinfo" => [ "addrepos" ])})
         if(!$repos || !scalar(@{$repos}));
 
@@ -608,7 +609,7 @@ sub page_display {
         } else {
             given($pathinfo[0]) {
                 # Repository/website operations
-                when("setrepos") { ($title, $content, $extrahead) = $self -> _set_repository(); }
+                when("addrepos") { ($title, $content, $extrahead) = $self -> _add_repository(); }
                 when("cloned")   { ($title, $content, $extrahead) = $self -> _generate_dashboard(undef, undef, "{L_WEBSITE_CLONE_SUCCESS}"); }
                 when("webdel")   { ($title, $content, $extrahead) = $self -> _generate_dashboard(undef, undef, "{L_WEBSITE_NUKE_SUCCESS}"); }
                 when("webset")   { ($title, $content, $extrahead) = $self -> _generate_dashboard(undef, undef, "{L_WEBSITE_CHANGE_SUCCESS}"); }
