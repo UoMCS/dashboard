@@ -87,7 +87,7 @@ table.listtable tr:hover td.controls ul.controls {
     background-position: 0px 0px;
 }
 
-.control.update.ctrldisabled {
+.control.update.disabled, .control.update.disabled:hover {
     background-position: 0px -16px;
 }
 
@@ -99,7 +99,7 @@ table.listtable tr:hover td.controls ul.controls {
     background-position: -16px 0px;
 }
 
-.control.remote.ctrldisabled {
+.control.remote.disabled, .control.remote.disabled:hover {
     background-position: -16px -16px;
 }
 
@@ -111,7 +111,7 @@ table.listtable tr:hover td.controls ul.controls {
     background-position: -32px 0px;
 }
 
-.control.delete.ctrldisabled {
+.control.delete.disabled, .control.delete.disabled:hover {
     background-position: -32px -16px;
 }
 
@@ -123,7 +123,7 @@ table.listtable tr:hover td.controls ul.controls {
     background-position: -48px 0px;
 }
 
-.control.change.ctrldisabled {
+.control.change.disabled, .control.change.disabled:hover {
     background-position: -48px -16px;
 }
 

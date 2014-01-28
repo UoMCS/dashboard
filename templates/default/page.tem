@@ -24,6 +24,10 @@
     <!-- favicon -->
     <link rel="icon" type="image/png" href="{V_[templatepath]}images/favicon.png" />
 
+    <script type='text/javascript'>
+        spinner_url = "{V_[templatepath]}images/spinner.gif";
+    </script>
+
     ***extrahead***
 
     <!--[if IE]>

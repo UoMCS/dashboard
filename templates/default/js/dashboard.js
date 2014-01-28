@@ -21,16 +21,16 @@ function form_protect(submit, spinner)
 function enable_repos_controls(id)
 {
     if($('updatebtn-'+id))
-        $('updatebtn-'+id).addEvent('click', function() { show_token(); }).removeClass('disabled');
+        $('updatebtn-'+id).addEvent('click', function() { update_repos(id); }).removeClass('disabled');
 
     if($('remotebtn-'+id))
-        $('remotebtn-'+id).addEvent('click', function() { update_repos(); }).removeClass('disabled');
+        $('remotebtn-'+id).addEvent('click', function() { show_token(id); }).removeClass('disabled');
 
     if($('deletebtn-'+id))
-        $('deletebtn-'+id).addEvent('click', function() { delete_repos(); }).removeClass('disabled');
+        $('deletebtn-'+id).addEvent('click', function() { delete_repos(id); }).removeClass('disabled');
 
     if($('changebtn-'+id))
-        $('changebtn-'+id).addEvent('click', function() { change_repos(); }).removeClass('disabled');
+        $('changebtn-'+id).addEvent('click', function() { change_repos(id); }).removeClass('disabled');
 }
 
 
@@ -173,6 +173,12 @@ function delete_repos(pathid)
                                          $('popbody').empty().grab(respElems[1]);
                                          popbox.setButtons([{title: respElems[2].get('text'), color: 'red', event: function() { do_delete_repos(pathid) } },
                                                             {title: respElems[3].get('text'), color: 'blue', event: function() { popbox.close(); }}]);
+
+                                         new Element("img", {   'id': 'popspinner',
+                                                                'src': spinner_url,
+                                                                width: 16,
+                                                                height: 16,
+                                                                'class': 'workspin'}).inject(popbox.footer, 'top');
                                          popbox.open();
                                      }
                                      $('workspinner-'+pathid).fade('out');
@@ -195,7 +201,9 @@ function do_delete_repos(pathid)
                             method: 'post',
                             onRequest: function() {
                                 $('workspinner-'+pathid).fade('in');
+                                $('popspinner').fade('in');
                                 disable_repos_controls(pathid);
+                                popbox.disableButtons(true);
                             },
                             onSuccess: function(respText, respXML) {
                                 var err = respXML.getElementsByTagName("error")[0];
@@ -247,6 +255,11 @@ function change_repos(pathid)
                                          $('popbody').empty().grab(respTree[2]); // will remove respTree[2]!
                                          popbox.setButtons([{title: respTree[3].get('text'), color: 'red', event: function() { do_change_repos(pathid) } },
                                                             {title: respTree[5].get('text'), color: 'blue', event: function() { popbox.close(); }}]);
+                                         new Element("img", {  'id': 'popspinner',
+                                                              'src': spinner_url,
+                                                              width: 16,
+                                                             height: 16,
+                                                            'class': 'workspin'}).inject(popbox.footer, 'top');
                                          popbox.open();
                                      }
                                      $('workspinner-'+pathid).fade('out');
@@ -269,7 +282,9 @@ function do_change_repos(pathid)
                             method: 'post',
                             onRequest: function() {
                                 $('workspinner-'+pathid).fade('in');
+                                $('popspinner').fade('in');
                                 disable_repos_controls(pathid);
+                                popbox.disableButtons(true);
                             },
                             onSuccess: function(respText, respXML) {
                                 var err = respXML.getElementsByTagName("error")[0];
@@ -322,6 +337,11 @@ function change_password()
                                          $('popbody').empty().grab(respTree[2]); // will remove respTree[2]!
                                          popbox.setButtons([{title: respTree[3].get('text'), color: 'blue', event: function() { do_change_password() } },
                                                             {title: respTree[5].get('text'), color: 'blue', event: function() { popbox.close(); }}]);
+                                         new Element("img", {   'id': 'popspinner',
+                                                               'src': spinner_url,
+                                                               width: 16,
+                                                              height: 16,
+                                                             'class': 'workspin'}).inject(popbox.footer, 'top');
                                          popbox.open();
                                      }
                                      $('dbworkspinner').fade('out');
@@ -345,6 +365,8 @@ function do_change_password()
                             onRequest: function() {
                                 $('dbworkspinner').fade('in');
                                 disable_database_controls();
+                                $('popspinner').fade('in');
+                                popbox.disableButtons(true);
                             },
                             onSuccess: function(respText, respXML) {
                                 var err = respXML.getElementsByTagName("error")[0];
@@ -365,7 +387,7 @@ function do_change_password()
                                 updatelock = false;
                             }
                           });
-    req.send({'db-pass': $('db-pass').get('value'),
+    req.post({'db-pass': $('db-pass').get('value'),
               'db-conf': $('db-conf').get('value')});
 
     return false;
@@ -397,6 +419,11 @@ function delete_database()
                                          $('popbody').empty().grab(respTree[2]); // will remove respTree[2]!
                                          popbox.setButtons([{title: respTree[3].get('text'), color: 'red', event: function() { do_delete_database() } },
                                                             {title: respTree[5].get('text'), color: 'blue', event: function() { popbox.close(); }}]);
+                                         new Element("img", {   'id': 'popspinner',
+                                                               'src': spinner_url,
+                                                               width: 16,
+                                                              height: 16,
+                                                             'class': 'workspin'}).inject(popbox.footer, 'top');
                                          popbox.open();
                                      }
                                      $('dbworkspinner').fade('out');
@@ -419,6 +446,8 @@ function do_delete_database()
                             onRequest: function() {
                                 $('dbworkspinner').fade('in');
                                 disable_database_controls();
+                                $('popspinner').fade('in');
+                                popbox.disableButtons(true);
                             },
                             onSuccess: function(respText, respXML) {
                                 var err = respXML.getElementsByTagName("error")[0];
@@ -455,6 +484,11 @@ window.addEvent('domready', function()
 
     if($('notebox'))
         setTimeout(function() { $('notebox').dissolve() }, 8000);
+
+    $$('ul.controls.website').each(function(element) {
+        var id = element.get('id').substr(5);
+        enable_repos_controls(id);
+    });
 
     enable_database_controls();
 
