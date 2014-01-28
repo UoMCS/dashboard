@@ -1,5 +1,5 @@
 <tr>
-    <td><a href="***url***">***subdir***</a></td>
+    <td><a href="***url***" class="rel">***subdir***</a></td>
     <td>***source***</td>
     <td class="controls">
         <ul class="controls website" id="ctrl-***id***">
