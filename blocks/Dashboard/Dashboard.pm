@@ -329,6 +329,7 @@ sub _generate_web_publish {
     my $repos = $self -> {"system"} -> {"git"} -> user_web_repo_list($user -> {"username"});
     return $self -> {"template"} -> load_template("dashboard/web/norepo.tem", {"***web-repos***" => $args -> {"web-repos"},
                                                                                "***web-path***"  => $args -> {"web-path"},
+                                                                               "***docs***"      => $self -> get_documentation_url("web"),
                                                                                "***form_url***"  => $self -> build_url(block => "manage", "pathinfo" => [ "addrepos" ])})
         if(!$repos || !scalar(@{$repos}));
 
@@ -350,6 +351,7 @@ sub _generate_web_publish {
 
     return $self -> {"template"} -> load_template("dashboard/web/repo.tem"  , {"***repos***"     => $rlist,
                                                                                "***addform***"   => $addform,
+                                                                               "***docs***"      => $self -> get_documentation_url("web"),
                                                                                "***web_url***"   => path_join($self -> {"settings"} -> {"git"} -> {"webbaseurl"}, lc($user -> {"username"}),"/"),
                                                                                "***pull_url***"  => $self -> build_url(block => "manage", "pathinfo" => [ "pullrepos" ]),
                                                                                "***nuke_url***"  => $self -> build_url(block => "manage", "pathinfo" => [ "nukerepos" ]),
@@ -400,7 +402,9 @@ sub _generate_database {
     # Does the user have a database?
     my $user_hasdb = $self -> {"system"} -> {"databases"} -> user_database_exists($user -> {"username"});
     if(!$user_hasdb) {
-        return $self -> {"template"} -> load_template("dashboard/db/nodb.tem", {"***form_url***"  => $self -> build_url(block => "manage", "pathinfo" => [ "newdb" ])});
+        return $self -> {"template"} -> load_template("dashboard/db/nodb.tem", {"***form_url***"  => $self -> build_url(block => "manage", "pathinfo" => [ "newdb" ]),
+                                                                                "***docs***"      => $self -> get_documentation_url("db"),
+                                                      });
     } else {
         # Get the list of group databases the user should have access to
         my $groups = $self -> {"system"} -> {"userdata"} -> get_user_groupnames($user -> {"username"});
@@ -414,6 +418,7 @@ sub _generate_database {
 
         return $self -> {"template"} -> load_template("dashboard/db/db.tem"  , {"***username***" => lc($user -> {"username"}),
                                                                                 "***password***" => "{L_DATABASE_PASSWORD_COPOUT}",
+                                                                                "***docs***"     => $self -> get_documentation_url("db"),
                                                                                 "***groups***"   => $self -> _generate_group_database($groupdbs),
                                                       });
     }
@@ -741,7 +746,7 @@ sub page_display {
         }
 
         $extrahead .= $self -> {"template"} -> load_template("dashboard/extrahead.tem");
-        return $self -> generate_dashboard_page($title, $content, $extrahead);
+        return $self -> generate_dashboard_page($title, $content, $extrahead, 'dashboard');
     }
 }
 

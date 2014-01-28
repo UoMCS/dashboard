@@ -28,25 +28,34 @@ use v5.12;
 # ==============================================================================
 #  Bar generation
 
-## @method $ block_display($title, $current)
+## @method $ block_display($title, $current, $doclink)
 # Generate a user toolbar, populating it as needed to reflect the user's options
 # at the current time.
 #
 # @param title   A string to show as the page title.
 # @param current The current page name.
+# @param doclink The name of a document link to include in the userbar. If not
+#                supplied, no link is shown.
 # @return A string containing the user toolbar html on success, undef on error.
 sub block_display {
     my $self    = shift;
     my $title   = shift;
     my $current = shift;
+    my $doclink = shift;
 
     $self -> clear_error();
 
     # Initialise fragments to sane "logged out" defaults.
-    my ($siteadmin, $msglist, $compose, $userprofile) =
+    my ($siteadmin, $userprofile, $docs) =
         ($self -> {"template"} -> load_template("userbar/siteadmin_disabled.tem"),
          $self -> {"template"} -> load_template("userbar/profile_loggedout.tem", {"***url-login***" => $self -> build_url(block => "login")}),
+         $self -> {"template"} -> load_template("userbar/doclink_disabled.tem"),
         );
+
+    # Is documentation available?
+    my $url = $self -> get_documentation_url($doclink);
+    $docs = $self -> {"template"} -> load_template("userbar/doclink_enabled.tem", {"***url-doclink***" => $url})
+        if($url);
 
     # Is the user logged in?
     if(!$self -> {"session"} -> anonymous_session()) {
@@ -66,6 +75,7 @@ sub block_display {
     return $self -> {"template"} -> load_template("userbar/userbar.tem", {"***pagename***"   => $title,
                                                                           "***mainurl***"    => $self -> build_url(block => $self -> {"settings"} -> {"config"} -> {"default_block"}, pathinfo => []),
                                                                           "***site-admin***" => $siteadmin,
+                                                                          "***doclink***"    => $docs,
                                                                           "***profile***"    => $userprofile});
 }
 

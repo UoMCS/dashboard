@@ -8,3 +8,5 @@ USERBAR_SITE_SETTINGS   = Administer site
 USERBAR_LOGIN_USER      = Username
 USERBAR_LOGIN_PASS      = Password
 USERBAR_LOGIN           = Log in
+
+USERBAR_DOCLINK         = Documentation (opens in new tab/window)

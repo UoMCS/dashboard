@@ -38,3 +38,13 @@
     width: 100%;
     clear: both;
 }
+
+.shadowbox div.headside {
+    float: right;
+    font-size: 16px;
+    display: inline;
+    position: relative;
+    padding: 0px;
+    margin: 0px;
+    font-style: italic;
+}

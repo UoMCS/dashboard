@@ -1,4 +1,5 @@
 <li class="shadowbox">
+    <div class="headside"><a href="***docs***" class="rel" title="{L_USERBAR_DOCLINK}"><img class="controlicon" src="{V_[templatepath]}userbar/images/documentation.png" alt="doclink" /></a></div>
     <h2>{L_DATABASE_TITLE}</h2>
     <div class="sbcontent">
         <form action="***form_url***" id="nodbform" method="post" onsubmit="return form_protect('newdbbtn', 'dbworkspinner');">

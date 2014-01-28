@@ -102,8 +102,11 @@ if(-e $tempdir) {
         # make sure the userdir exists if the path is set
         if($path && !-e $userbase) {
             mkdir $userbase or fatal_error("Unable to create user directory: $!");
-            my $res = `/bin/chown -R $user:$grp '$userbase' 2>&1`;
+            $res = `/bin/chown -R $user:$grp '$userbase' 2>&1`;
             fatal_error("Unable to set owner: $res") if($res);
+
+            $res = `/bin/chmod -R o= '$userbase' 2>&1`;
+            fatal_error("Unable to remote world read: $res") if($res);
         }
 
         fatal_error("User directory move failed: $!")
