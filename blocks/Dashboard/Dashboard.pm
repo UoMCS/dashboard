@@ -167,6 +167,33 @@ sub _validate_repository {
 }
 
 
+## @method private $ _validate_change_repository($path)
+# Change the repository at the specified path to a new origin entered by the user.
+#
+# @param path The path to write the new repository into. This will destroy anything
+#             already there, and it must have been checked with _validate_repository_id().
+# @return undef on success, otherwise an error message.
+sub _validate_change_repository {
+    my $self = shift;
+    my $path = shift;
+    my $user = $self -> {"session"} -> get_user_byid();
+
+    my ($repos, $error) = $self -> validate_string("web-repos", {"required" => 1,
+                                                                 "nicename" => $self -> {"template"} -> replace_langvar("WEBSITE_REPOS"),
+                                                                 "minlen"   => 8,
+                                                                 "formattest" => $self -> {"formats"} -> {"url"},
+                                                                 "formatdesc" => $self -> {"template"} -> replace_langvar("WEBSITE_ERR_BADREPO"),
+                                                                });
+    return $error if($error);
+
+    # The respository appears to be valid, do the clone
+    $self -> {"system"} -> {"git"} -> clone_repository($repos, $user -> {"username"}, $path)
+        or return $self -> {"system"} -> {"git"} -> errstr();
+
+    return undef;
+}
+
+
 ## @method private $ _set_repository()
 # Set the user's repository to the repository they specify in the form, if possible.
 #
@@ -565,7 +592,11 @@ sub _change_repository {
 
     $self -> log("repository", "Changing repository for user.");
 
-    my ($errors, $args) = $self -> _validate_repository();
+    my ($errors, $path) = $self -> _validate_repository_id();
+    return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $errors}))
+        if($errors);
+
+    $errors = $self -> _validate_change_repository($path);
     return $self -> api_errorhash("validation_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $errors}))
         if($errors);
 

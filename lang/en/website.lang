@@ -37,7 +37,7 @@ WEBSITE_NUKE_SUCCESS   = Delete successful. Your website has been removed from t
 WEBSITE_CHANGE_SUCCESS = Project change successful. Your website is now using the newly selected project.
 
 WEBSITE_NUKE_CONFIRM   = Are you sure that you want to delete your web tree? You can create a new one by entering a new project repository at a later time.
-WEBSITE_CHANGE_CONFIRM = Are you sure that you want to change the project used as the source of your website? Changing the project will entirely replace your existing website. If you want to continue, please enter the URL of the project to use as your website below.
+WEBSITE_CHANGE_CONFIRM = Are you sure that you want to change the project used as the source of this website? Changing the project will entirely replace your existing website. If you want to continue, please enter the URL of the project to publish as this website below.
 WEBSITE_CONFIRM  = Confirmation requested.
 
 WEBSITE_EXTPULL    = Show update token

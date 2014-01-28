@@ -290,7 +290,7 @@ function do_change_repos(pathid)
                                 updatelock = false;
                             }
                           });
-    req.post({'web-repos': $('web-repos').get('value'),
+    req.post({'web-repos': $('web-change').get('value'),
               id: pathid});
 
     return false;
@@ -448,7 +448,10 @@ function do_delete_database()
 window.addEvent('domready', function()
 {
     if($('web-repos'))
-        new OverText('web-repos', { poll: true });
+        new OverText('web-repos', { wrap: true});
+
+    if($('web-path'))
+        new OverText('web-path', { wrap: true});
 
     if($('notebox'))
         setTimeout(function() { $('notebox').dissolve() }, 8000);
