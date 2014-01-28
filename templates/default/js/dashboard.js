@@ -474,13 +474,31 @@ function do_delete_database()
 }
 
 
+function autoset_project_dir(projfield, dirfield)
+{
+    var setproj  = projfield.get('value');
+    var projname = /\/([^\/]+)\.git\s*$/;
+
+    if(setproj) {
+        var result = projname.exec(setproj);
+        if(result && result[1]) {
+            var result = result[1].replace(/ /g, '_');
+            dirfield.set('value', result);
+        }
+    }
+}
+
 window.addEvent('domready', function()
 {
     if($('web-repos'))
         new OverText('web-repos', { wrap: true});
 
     if($('web-path'))
-        new OverText('web-path', { wrap: true});
+        new OverText('web-path', { wrap: true,
+                                   poll: true});
+
+    if($('web-repos'))
+        $('web-repos').addEvent('change', function () { autoset_project_dir($('web-repos'), $('web-path')); });
 
     if($('notebox'))
         setTimeout(function() { $('notebox').dissolve() }, 8000);
