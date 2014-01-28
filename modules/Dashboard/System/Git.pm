@@ -298,7 +298,7 @@ sub _write_config_file {
         eval { save_file($configname, $config); };
         return $self -> self_error("Unable to write configuration file: $@") if($@);
 
-        my $res = `/usr/bin/chmod o= '$configname' 2>&1`;
+        my $res = `/bin/chmod o= '$configname' 2>&1`;
         return $self -> self_error("Unable to write configuration file: $res") if($res);
     } else {
         unlink $configname or return $self -> self_error("Unable to remove old config file: $!")
