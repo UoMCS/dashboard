@@ -77,7 +77,7 @@ function show_token(pathid)
     var req = new Request.HTML({ url: api_request_path("dashboard", "gettoken"),
                                  method: 'post',
                                  onRequest: function() {
-                                     $('workspinner').fade('in');
+                                     $('workspinner-'+pathid).fade('in');
                                      disable_repos_controls(pathid);
                                  },
                                  onSuccess: function(respTree, respElems, respHTML) {
@@ -95,12 +95,12 @@ function show_token(pathid)
                                          popbox.setButtons([{title: respTree[3].get('text'), color: 'blue', event: function() { popbox.close(); }}]);
                                          popbox.open();
                                      }
-                                     $('workspinner').fade('out');
+                                     $('workspinner-'+pathid).fade('out');
                                      enable_repos_controls(pathid);
                                      updatelock = false;
                                  }
                                });
-    req.send({id: pathid});
+    req.post({'id': pathid});
 
     return false;
 }
@@ -114,7 +114,7 @@ function update_repos(pathid)
     var req = new Request.HTML({ url: api_request_path("dashboard", "pullrepo"),
                                  method: 'post',
                                  onRequest: function() {
-                                     $('workspinner').fade('in');
+                                     $('workspinner-'+pathid).fade('in');
                                      disable_repos_controls(pathid);
                                  },
                                  onSuccess: function(respTree, respElems, respHTML) {
@@ -137,12 +137,12 @@ function update_repos(pathid)
                                          setTimeout(function() { $('notebox').dissolve() }, 8000);
                                      }
 
-                                     $('workspinner').fade('out');
+                                     $('workspinner-'+pathid).fade('out');
                                      enable_repos_controls(pathid);
                                      updatelock = false;
                                  }
                                });
-    req.send({id: pathid});
+    req.post({'id': pathid});
 
     return false;
 }
@@ -156,7 +156,7 @@ function delete_repos(pathid)
     var req = new Request.HTML({ url: api_request_path("dashboard", "webnukecheck"),
                                  method: 'post',
                                  onRequest: function() {
-                                     $('workspinner').fade('in');
+                                     $('workspinner-'+pathid).fade('in');
                                      disable_repos_controls(pathid);
                                  },
                                  onSuccess: function(respTree, respElems, respHTML) {
@@ -175,12 +175,12 @@ function delete_repos(pathid)
                                                             {title: respElems[3].get('text'), color: 'blue', event: function() { popbox.close(); }}]);
                                          popbox.open();
                                      }
-                                     $('workspinner').fade('out');
+                                     $('workspinner-'+pathid).fade('out');
                                      enable_repos_controls(pathid);
                                      updatelock = false;
                                  }
                                });
-    req.send({id: pathid});
+    req.post({'id': pathid});
 
     return false;
 }
@@ -194,7 +194,7 @@ function do_delete_repos(pathid)
     var req = new Request({ url: api_request_path("dashboard", "dowebnuke"),
                             method: 'post',
                             onRequest: function() {
-                                $('workspinner').fade('in');
+                                $('workspinner-'+pathid).fade('in');
                                 disable_repos_controls(pathid);
                             },
                             onSuccess: function(respText, respXML) {
@@ -211,12 +211,12 @@ function do_delete_repos(pathid)
                                     if(rup)
                                         location.href = rup;
                                 }
-                                $('workspinner').fade('out');
+                                $('workspinner-'+pathid).fade('out');
                                 enable_repos_controls(pathid);
                                 updatelock = false;
                             }
                           });
-    req.send({id: pathid});
+    req.post({'id': pathid});
 
     return false;
 }
@@ -230,7 +230,7 @@ function change_repos(pathid)
     var req = new Request.HTML({ url: api_request_path("dashboard", "websetcheck"),
                                  method: 'post',
                                  onRequest: function() {
-                                     $('workspinner').fade('in');
+                                     $('workspinner-'+pathid).fade('in');
                                      disable_repos_controls(pathid);
                                  },
                                  onSuccess: function(respTree, respElems, respHTML) {
@@ -249,12 +249,12 @@ function change_repos(pathid)
                                                             {title: respTree[5].get('text'), color: 'blue', event: function() { popbox.close(); }}]);
                                          popbox.open();
                                      }
-                                     $('workspinner').fade('out');
+                                     $('workspinner-'+pathid).fade('out');
                                      enable_repos_controls(pathid);
                                      updatelock = false;
                                  }
                                });
-    req.send();
+    req.post();
 
     return false;
 }
@@ -268,7 +268,7 @@ function do_change_repos(pathid)
     var req = new Request({ url: api_request_path("dashboard", "dowebchange"),
                             method: 'post',
                             onRequest: function() {
-                                $('workspinner').fade('in');
+                                $('workspinner-'+pathid).fade('in');
                                 disable_repos_controls(pathid);
                             },
                             onSuccess: function(respText, respXML) {
@@ -285,12 +285,12 @@ function do_change_repos(pathid)
                                     if(rup)
                                         location.href = rup;
                                 }
-                                $('workspinner').fade('out');
+                                $('workspinner-'+pathid).fade('out');
                                 enable_repos_controls(pathid);
                                 updatelock = false;
                             }
                           });
-    req.send({'web-repos': $('web-repos').get('value'),
+    req.post({'web-repos': $('web-repos').get('value'),
               id: pathid});
 
     return false;

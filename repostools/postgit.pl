@@ -92,8 +92,11 @@ if(-e $tempdir) {
         my $res = `/bin/chown -R $user:$grp '$tempdir' 2>&1`;
         fatal_error("Unable to set owner: $res") if($res);
 
+        $res = `/bin/chmod -R o= '$tempdir' 2>&1`;
+        fatal_error("Unable to remote world read: $res") if($res);
+
         my $gitdir = path_join($tempdir, ".git");
-        $res = `/bin/chmod -R o-w,g-w,u-w '$gitdir' 2>&1`;
+        $res = `/bin/chmod -R o=,g-w,u-w '$gitdir' 2>&1`;
         fatal_error("Unable to complete setup: $res") if($res);
 
         # make sure the userdir exists if the path is set
@@ -109,7 +112,7 @@ if(-e $tempdir) {
         # Force the htaccess
         my $htaccess = path_join($userbase, ".htaccess");
         create_htaccess($htaccess, $userdir);
-        $res = `/bin/chmod -R o-w,g-w,u-w '$htaccess' 2>&1`;
+        $res = `/bin/chmod -R o=,g-w,u-w '$htaccess' 2>&1`;
         fatal_error("Unable to complete setup: $res") if($res);
 
         $res = `/bin/chown -R $user:$grp '$htaccess' 2>&1`;

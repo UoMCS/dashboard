@@ -6,8 +6,16 @@ WEBSITE_REPOSEG    = https://gitlab.cs.man.ac.uk/your.username/project.git
 WEBSITE_PATH       = Subdirectory
 WEBSITE_PATHEG     = project_dir
 
-WEBSITE_REPOS_ERRDESC = You must provide the <code>https://</code> URL of a public git project to use as your website. <code>ssh://</code> URLs are not accepted.
+WEBSITE_ID         = id (subdirectory)
+
 WEBSITE_NEEDGIT    = The URL of the git project to use as your website must end in <code>.git</code>.
+
+WEBSITE_ERR_BADREPO  = You must provide the <code>https://</code> URL of a public git project to use as your website. <code>ssh://</code> URLs are not accepted.
+WEBSITE_ERR_BADPATH  = The subdirectory name may only contain alphanumeric characters and underscores '_'.
+WEBSITE_ERR_BASEUSED = Unable to publish this project into the root of your web space: a project is already published there. Please use the 'Change project' feature, or delete the existing published project from your webspace first.
+WEBSITE_ERR_GOTPROJ  = Unable to publish this project into the root of your web space: one or more projects have been published in subdirectories, this prevents publishing in the root of your site.
+WEBSITE_ERR_EXISTS   = The provided subdirectory name is already in use by another published project. Please either delete that published project, or use the 'Change project' feature for that published project to change it.
+WEBSITE_ERR_BADID    = The specified id (subdirectory) does not correspond to a valid published project.
 
 WEBSITE_GOTREPOS   = This is a list of your currently published websites. You can manage them using the options in the 'controls' column for each website.
 WEBSITE_PUBLISH    = Publish project
@@ -27,7 +35,6 @@ WEBSITE_CLONE_SUCCESS  = Publish successful! The selected project has been clone
 WEBSITE_PULL_SUCCESS   = Update successful. Your website is now using the latest version of your project.
 WEBSITE_NUKE_SUCCESS   = Delete successful. Your website has been removed from the server.
 WEBSITE_CHANGE_SUCCESS = Project change successful. Your website is now using the newly selected project.
-
 
 WEBSITE_NUKE_CONFIRM   = Are you sure that you want to delete your web tree? You can create a new one by entering a new project repository at a later time.
 WEBSITE_CHANGE_CONFIRM = Are you sure that you want to change the project used as the source of your website? Changing the project will entirely replace your existing website. If you want to continue, please enter the URL of the project to use as your website below.

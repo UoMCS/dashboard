@@ -36,32 +36,32 @@ sub _update_repository {
     my $self  = shift;
     my $token = shift;
 
-    return $self -> _json_hash("error", "no token", $self -> {"template"} -> replace_langvar("TOKEN_ERR_NOTOKEN"))
+    return $self -> _json_hash("error", undef, undef, "no token", $self -> {"template"} -> replace_langvar("TOKEN_ERR_NOTOKEN"))
         if(!$token);
 
     # check the token for dodgyness
-    return $self -> _json_hash("error", "bad token", $self -> {"template"} -> replace_langvar("TOKEN_ERR_BADTOKEN"))
+    return $self -> _json_hash("error", undef, undef, "bad token", $self -> {"template"} -> replace_langvar("TOKEN_ERR_BADTOKEN"))
         unless($token =~ m|^[0-9a-zA-Z+/]+$|);
 
     $self -> log("remote", "Looking for owner of token $token");
 
     my $usertoken = $self -> {"system"} -> {"repostools"} -> get_token($token);
-    return $self -> _json_hash("error", "bad token", $self -> {"template"} -> replace_langvar("TOKEN_ERR_BADTOKEN"))
+    return $self -> _json_hash("error", undef, undef, "bad token", $self -> {"template"} -> replace_langvar("TOKEN_ERR_BADTOKEN"))
         if(!$usertoken || !$usertoken -> {"user_id"});
 
     # Find the user the token belongs to
     my $user = $self -> {"session"} -> get_user_byid($usertoken -> {"user_id"});
 
-    $self -> log("remote", "Pulling repository for user ".$user -> {"username"});
+    $self -> log("remote", "Pulling repository for user ".$user -> {"username"}." path = ".$usertoken -> {"path"});
 
-    $self -> {"system"} -> {"git"} -> pull_repository($user -> {"username"})
-        or return $self -> _json_hash("error", "pull failed", $self -> {"system"} -> {"git"} -> errstr());
+    $self -> {"system"} -> {"git"} -> pull_repository($user -> {"username"}, $usertoken -> {"path"})
+        or return $self -> _json_hash("error", $usertoken -> {"path"}, $usertoken -> {"repos_url"}, "pull failed", $self -> {"system"} -> {"git"} -> errstr());
 
-    return $self -> _json_hash("success");
+    return $self -> _json_hash("success", $usertoken -> {"path"}, $usertoken -> {"repos_url"});
 }
 
 
-## @method private $ _json_hash($status, $short, $desc)
+## @method private $ _json_hash($status, $path, $origin, $short, $desc)
 # Generate a reference to a hash that can be passed to _json_response(). This
 # builds a hash in a form suitable for passing to _json_response() based on
 # the contents of the specified parameters.
@@ -75,6 +75,8 @@ sub _update_repository {
 sub _json_hash {
     my $self   = shift;
     my $status = shift;
+    my $path   = shift;
+    my $origin = shift;
     my $short  = shift;
     my $desc   = shift;
 
@@ -83,6 +85,9 @@ sub _json_hash {
     my $hash = { "status"    => $status,
                  "timestamp" => "$date",
     };
+
+    $hash -> {"path"}   = $path   if(defined($path));
+    $hash -> {"origin"} = $origin if(defined($origin));
 
     if($status eq "error") {
         $hash -> {"information"} = { "reason"  => $short,

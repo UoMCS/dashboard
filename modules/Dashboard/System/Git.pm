@@ -27,43 +27,61 @@ use Git::Repository;
 use v5.12;
 
 
-## @method $ user_web_repo_exists($username)
-# Determine whether a repo exists in the standard web directory for the
-# specified user.
+## @method $ user_web_repo_list($username)
+# Generate a list of published repositories inside the user's web directory.
 #
 # @param username The username of the user to search for a repo for.
 # @return A reference to an array of repository descriptions on success,
 #         undef on error.
-sub user_web_repo_exists {
+sub user_web_repo_list {
     my $self     = shift;
     my $username = lc(shift);
 
     $self -> clear_error();
 
-    # Can't do anything if there's no user directory
-    my $userpath = path_join($self -> {"settings"} -> {"git"} -> {"webbasedir"}, $username);
-    return undef if(!-d $userpath);
-
     # First check in the base directory
-    my $reposdata = $self -> _parse_git_config($username);
+    my $reposdata = $self -> user_web_repo_exists($username);
     return [ $reposdata ] if($reposdata);
 
     # No repository in the base, scan for subdirs
-    opendir(USERDIR, $userpath)
+    opendir(USERDIR, path_join($self -> {"settings"} -> {"git"} -> {"webbasedir"}, $username))
         or return $self -> self_error("Unable to open userpath for $username: $!");
     my @entries = readdir(USERDIR);
     closedir(USERDIR);
 
     my @repos;
     foreach my $entry (sort @entries) {
-        next if($entry =~ /^\.*$/ || !-d path_join($userpath, $entry));
+        next if($entry =~ /^\.*$/); # user_web_repo_exists checks for valid path
 
-        $reposdata = $self -> _parse_git_config($username, $entry);
+        $reposdata = $self -> user_web_repo_exists($username, $entry);
         push(@repos, $reposdata)
             if($reposdata);
     }
 
     return \@repos;
+}
+
+
+### @method $ user_web_repo_exists($username, $subdir)
+# Determine whether a repo exists in at the location specified in the
+# user's web directory. If no subdir is set, the root is checked for a
+# published project.
+#
+# @param username The username of the user to check for a repo for.
+# @param subdir   The subdir to check for a repository.
+# @return A reference to a hash containing the repository info on success,
+#         undef on error or if the subdir does not exist/contain a
+#         repository.
+sub user_web_repo_exists {
+    my $self     = shift;
+    my $username = lc(shift);
+    my $subdir   = shift;
+
+    # Can't be a valid repository if it doesn't exist
+    my $userpath = path_join($self -> {"settings"} -> {"git"} -> {"webbasedir"}, $username, $subdir);#
+    return undef if(!-d $userpath);
+
+    $self -> _parse_git_config($userpath, $subdir);
 }
 
 
@@ -83,8 +101,9 @@ sub delete_repository {
     my ($safename) = $username =~/^([.\w]+)$/;
     return $self -> self_error("Delete failed: illegal username specified") if(!$safename);
 
-    my ($safedir) = $subdir =~ /^(\w+)$/;
-    return $self -> self_error("Delete failed: illegal subdir specified") if(!defined($safedir));
+    my ($safedir) = $subdir =~ /^(\w+)?$/;
+    return $self -> self_error("Delete failed: illegal subdir specified") if($subdir && !defined($safedir));
+    $safedir = "" if(!defined($safedir));
 
     # perform the pre-clone step
     my $res = `sudo $self->{settings}->{repostools}->{preclone} $safename $safedir`;
@@ -113,8 +132,9 @@ sub clone_repository {
     my ($safename) = $username =~/^([.\w]+)$/;
     return $self -> self_error("Clone failed: illegal username specified") if(!$safename);
 
-    my ($safedir) = $subdir =~ /^(\w+)$/;
-    return $self -> self_error("Clone failed: illegal subdir specified") if(!defined($safedir));
+    my ($safedir) = $subdir =~ /^(\w+)?$/;
+    return $self -> self_error("Clone failed: illegal subdir specified") if($subdir && !defined($safedir));
+    $safedir = "" if(!defined($safedir));
 
     # perform the pre-clone step
     my $res = `sudo $self->{settings}->{repostools}->{preclone} $safename $safedir`;
@@ -184,8 +204,9 @@ sub pull_repository {
     my ($safename) = $username =~/^([.\w]+)$/;
     return $self -> self_error("Pull failed: illegal username specified") if(!$safename);
 
-    my ($safedir) = $subdir =~ /^(\w+)$/;
-    return $self -> self_error("Clone failed: illegal subdir specified") if(!defined($safedir));
+    my ($safedir) = $subdir =~ /^(\w+)?$/;
+    return $self -> self_error("Clone failed: illegal subdir specified") if($subdir && !defined($safedir));
+    $safedir = "" if(!defined($safedir));
 
     # perform the pre-pull step
     my $res = `sudo $self->{settings}->{repostools}->{prepull} $safename $safedir`;
@@ -283,26 +304,29 @@ sub _write_config_file {
 
         eval { save_file($configname, $config); };
         return $self -> self_error("Unable to write configuration file: $@") if($@);
+
+        my $res = `/usr/bin/chmod o= '$configname' 2>&1`;
+        return $self -> self_error("Unable to write configuration file: $res") if($res);
     }
 
     return 1;
 }
 
 
-## @method private $ _parse_git_config($username, $subdir)
+## @method private $ _parse_git_config($path, $subdir)
 # Parse the specified git config, and return a hash containing the
 # config information pertinent to Dashboard.
 #
-# @param username The name of the user to look for a repository for.
-# @param subdir   The subdirectory to look in for a .git directory.
+# @param path   The path to look in for a .git directory.
+# @param subdir The subdirectory of the user's web space the path corresponds to.
 # @return A reference to a hash if a git repository is found, undef if
 #         it is not (or an error occurred)
 sub _parse_git_config {
-    my $self     = shift;
-    my $username = shift;
-    my $subdir   = shift;
+    my $self   = shift;
+    my $path   = shift;
+    my $subdir = shift;
 
-    my $config = path_join($self -> {"settings"} -> {"git"} -> {"webbasedir"}, $username, $subdir, ".git", "config");
+    my $config = path_join($path, ".git", "config");
     return undef if(!-f $config);
 
     # Hey, what do you know, ConfigMicro can parse git configs!
@@ -311,7 +335,7 @@ sub _parse_git_config {
 
     return { "origin" => $settings -> {'remote "origin"'} -> {"url"},
              "subdir" => $subdir,
-             "path"   => path_join($username, $subdir)
+             "path"   => $path
            };
 }
 

@@ -75,12 +75,12 @@ table.listtable tr td.controls {
 }
 
 table.listtable tr td.controls ul.controls {
-    display: none;
-/*    float: right;*/
+/*    display: none;
+    float: right;*/
 }
 
 table.listtable tr:hover td.controls ul.controls {
-    display: inline-block;
+/*    display: inline-block;*/
 }
 
 .control.update {

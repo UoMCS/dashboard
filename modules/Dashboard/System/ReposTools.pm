@@ -27,51 +27,55 @@ use Data::Dumper;
 use v5.12;
 
 
-## @method $ set_user_token($reposurl, $user)
+## @method $ set_user_token($reposurl, $user, $path)
 # Create and store a remote update token for the user.
 #
 # @param reposurl The URL of the repository the user has cloned.
 # @param user     A reference to the user's data
+# @param path     The subdirectory path containing the project
 # @return A reference to the user's token data on success, undef on error.
 sub set_user_token {
     my $self     = shift;
     my $reposurl = shift;
     my $user     = shift;
+    my $path     = shift || "";
 
     $self -> clear_error();
 
     my $nukeold = $self -> {"dbh"} -> prepare("DELETE FROM `".$self -> {"settings"} -> {"database"} -> {"tokens"}."`
-                                               WHERE `user_id` = ?");
-    $nukeold -> execute($user -> {"user_id"})
+                                               WHERE `user_id` = ? AND `path` LIKE ?");
+    $nukeold -> execute($user -> {"user_id"}, $path)
         or return $self -> self_error("Unable to perform user token cleanup: ".$self -> {"dbh"} -> errstr);
 
     my $newtok = $self -> {"dbh"} -> prepare("INSERT INTO  `".$self -> {"settings"} -> {"database"} -> {"tokens"}."`
-                                              (`user_id`, `token`, `repos_url`)
-                                              VALUES(?, ?, ?)");
-    my $result = $newtok -> execute($user -> {"user_id"}, sha256_base64($reposurl."-".Dumper($user)."-".time()), $reposurl);
+                                              (`user_id`, `path`, `token`, `repos_url`)
+                                              VALUES(?, ?, ?, ?)");
+    my $result = $newtok -> execute($user -> {"user_id"}, $path, sha256_base64($reposurl."-".Dumper($user)."-".$path."-".time()), $reposurl);
     return $self -> self_error("Unable to create remote update token: ".$self -> {"dbh"} -> errstr) if(!$result);
     return $self -> self_error("Remote update token creation failed, no rows added") if($result eq "0E0");
 
-    return $self -> get_user_token($user -> {"user_id"});
+    return $self -> get_user_token($user -> {"user_id"}, $path);
 }
 
 
-## @method $ get_user_token($userid)
+## @method $ get_user_token($userid, $path)
 # Given a user ID, fetch the remote update token data for the user.
 #
 # @param userid The ID of the user to fetch the token data for.
+# @param path     The subdirectory path containing the project
 # @return A reference to a hash containing the user's token data on
 #         success, an empty hashref if the user has no token, undef
 #         on error.
 sub get_user_token {
     my $self   = shift;
     my $userid = shift;
+    my $path   = shift || "";
 
     $self -> clear_error();
 
     my $tokeh = $self -> {"dbh"} -> prepare("SELECT * FROM `".$self -> {"settings"} -> {"database"} -> {"tokens"}."`
-                                             WHERE `user_id` = ?");
-    $tokeh -> execute($userid)
+                                             WHERE `user_id` = ? AND `path` LIKE ?");
+    $tokeh -> execute($userid, $path)
         or return $self -> self_error("Unable to perform user token lookup: ".$self -> {"dbh"} -> errstr);
 
     return $tokeh -> fetchrow_hashref() || {};

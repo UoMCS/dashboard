@@ -28,27 +28,56 @@ use Data::Dumper;
 # ============================================================================
 #  Repository/web related
 
-## @method private $ _validate_repository_fields($args)
+## @method private @ _validate_repository_id()
+# Determine whether the use has set a subpath to operate on, and if so whether
+# it corresponds to a valid path.
+#
+# @return Two values: a string containing any error messages generated during
+#         validation, and the subpath string. If the subpath has been specified
+#         but corresponds to the root, this will be the empty string.
+sub _validate_repository_id {
+    my $self = shift;
+    my $user = $self -> {"session"} -> get_user_byid();
+
+    # Check whether an error has been specified
+    my ($path, $error) = $self -> validate_string("id", {"required"   => 0,
+                                                         "nicename"   => $self -> {"template"} -> replace_langvar("WEBSITE_ID"),
+                                                         "maxlen"     => 24,
+                                                         "formattest" => '^(-|\w+)?$',
+                                                         "formatdesc" => $self -> {"template"} -> replace_langvar("WEBSITE_ERR_BADPATH"),
+                                                  });
+    return ($error, "") if($error);
+    print STDERR "Got path $path";
+
+    # If the path is -, empty it so it can be used 'as is'
+    $path = "" if($path eq "-");
+
+    # Does it exist?
+    my $exists = $self -> {"system"} -> {"git"} -> user_web_repo_exists($user -> {"username"}, $path);
+    return ($self -> {"template"} -> replace_langvar("WEBSITE_ERR_BADID"), $path) unless($exists);
+
+    return ("", $path);
+}
+
+
+## @method private $ _validate_repository_fields($args, $user)
 # Determine whether the repository field set by the user is valid and appears
 # to correspond to a possible repository.
 #
 # @param args A reference to a hash to store validated data in.
+# @param user A reference to the user data for the user submitting data.
 # @return empty string on success, otherwise an error string.
 sub _validate_repository_fields {
     my $self = shift;
     my $args = shift;
+    my $user = shift;
     my ($errors, $error) = ("", "");
 
     ($args -> {"web-repos"}, $error) = $self -> validate_string("web-repos", {"required" => 1,
                                                                               "nicename" => $self -> {"template"} -> replace_langvar("WEBSITE_REPOS"),
                                                                               "minlen"   => 8,
                                                                               "formattest" => $self -> {"formats"} -> {"url"},
-                                                                              "formatdesc" => $self -> {"template"} -> replace_langvar("WEBSITE_REPOS_ERRDESC"),
-                                                                });
-    $errors .= $self -> {"template"} -> load_template("error/error_item.tem", {"***error***" => $error}) if($error);
-
-    ($args -> {"web-path"}, $error) = $self -> validate_string("web-path", {"required" => 0,
-                                                                            "nicename" => $self -> {"template"} -> replace_langvar("WEBSITE_PATH"),
+                                                                              "formatdesc" => $self -> {"template"} -> replace_langvar("WEBSITE_ERR_BADREPO"),
                                                                 });
     $errors .= $self -> {"template"} -> load_template("error/error_item.tem", {"***error***" => $error}) if($error);
 
@@ -56,6 +85,41 @@ sub _validate_repository_fields {
     if($args -> {"web-repos"}) {
         $errors .= $self -> {"template"} -> load_template("error/error_item.tem", {"***error***" => "{L_WEBSITE_NEEDGIT}"})
             unless($args -> {"web-repos"} =~ /\.git$/i);
+    }
+
+    ($args -> {"web-path"}, $error) = $self -> validate_string("web-path", {"required"   => 0,
+                                                                            "nicename"   => $self -> {"template"} -> replace_langvar("WEBSITE_PATH"),
+                                                                            "maxlen"     => 24,
+                                                                            "formattest" => '^(\w+)?$',
+                                                                            "formatdesc" => $self -> {"template"} -> replace_langvar("WEBSITE_ERR_BADPATH"),
+                                                                });
+    $errors .= $self -> {"template"} -> load_template("error/error_item.tem", {"***error***" => $error}) if($error);
+
+    # If no path is specified, it's an attempt to publish in the root
+    if(!defined($args -> {"web-path"}) || $args -> {"web-path"} eq "") {
+        # Can only publish in the root if there are no projects published already
+        my $reposlist = $self -> {"system"} -> {"git"} -> user_web_repo_list($user -> {"username"});
+
+        # If the user has checked out projects, work out which error to send back
+        if($reposlist && scalar(@{$reposlist})) {
+            # Default to assuming the base path is in use
+            $error = "{L_WEBSITE_ERR_BASEUSED}";
+
+            # If the path is set in the first entry (which implies it is set in all others)
+            # then the user has one or more published projects in subdirs
+            $error = "{L_WEBSITE_ERR_GOTPROJ}"
+                if($reposlist -> [0] -> {"path"});
+
+            $errors .= $self -> {"template"} -> load_template("error/error_item.tem", {"***error***" => $error});
+        }
+
+    # A path has been specified, make sure a project doesn't already exist there
+    } else {
+        print STDERR "Path specified as ".$args -> {"web-path"}." checking exists";
+        my $exists = $self -> {"system"} -> {"git"} -> user_web_repo_exists($user -> {"username"}, $args -> {"web-path"});
+
+        $errors .= $self -> {"template"} -> load_template("error/error_item.tem", {"***error***" => "{L_WEBSITE_ERR_EXISTS}"})
+            if($exists);
     }
 
     return $errors;
@@ -67,12 +131,15 @@ sub _validate_repository_fields {
 # to correspond to a possible repository. If it is, perform the clone process
 # for the user.
 #
+# @return Two values: a string containing any error messages generated during
+#         validation, and a reference to a hash containing the arguments
+#         parsed from submitted data.
 sub _validate_repository {
     my $self = shift;
     my ($args, $errors, $error) = ({}, "", "", undef);
     my $user = $self -> {"session"} -> get_user_byid();
 
-    $error = $self -> _validate_repository_fields($args);
+    $error = $self -> _validate_repository_fields($args, $user);
     $errors .= $error if($error);
 
     return ($self -> {"template"} -> load_template("error/error_list.tem", {"***message***" => "{L_WEBSITE_CLONE_FAIL}",
@@ -232,7 +299,7 @@ sub _generate_web_publish {
     my $args = shift;
 
     # First up, does the user have an existing repository in place?
-    my $repos = $self -> {"system"} -> {"git"} -> user_web_repo_exists($user -> {"username"});
+    my $repos = $self -> {"system"} -> {"git"} -> user_web_repo_list($user -> {"username"});
     return $self -> {"template"} -> load_template("dashboard/web/norepo.tem", {"***web-repos***" => $args -> {"web-repos"},
                                                                                "***web-path***"  => $args -> {"web-path"},
                                                                                "***form_url***"  => $self -> build_url(block => "manage", "pathinfo" => [ "addrepos" ])})
@@ -380,17 +447,21 @@ sub _show_token {
 
     $self -> log("repository", "Token requested.");
 
-    my $origin = $self -> {"system"} -> {"git"} -> user_web_repo_exists($user -> {"username"})
+    my ($errors, $path) = $self -> _validate_repository_id();
+    return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $errors}))
+        if($errors);
+
+    my $repos = $self -> {"system"} -> {"git"} -> user_web_repo_exists($user -> {"username"}, $path)
         or return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => "{L_WEBSITE_ERR_NOREPO}"}));
 
-    my $token = $self -> {"system"} -> {"repostools"} -> get_user_token($user -> {"user_id"})
+    my $token = $self -> {"system"} -> {"repostools"} -> get_user_token($user -> {"user_id"}, $path)
         or return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"system"} -> {"repostools"} -> errstr()}));
 
     # If the user doesn't have a token, or it somehow doesn't match the origin, make a new one
-    if(!$token -> {"repos_url"} || $token -> {"repos_url"} != $origin) {
+    if(!$token -> {"repos_url"} || $token -> {"repos_url"} != $repos -> {"origin"}) {
         $self -> log("repository", "User doesn't have a token, or it is incorrect. Making new");
 
-        $token = $self -> {"system"} -> {"repostools"} -> set_user_token($origin, $user)
+        $token = $self -> {"system"} -> {"repostools"} -> set_user_token($repos -> {"origin"}, $user, $path)
             or return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"system"} -> {"repostools"} -> errstr()}));
     }
 
@@ -411,9 +482,15 @@ sub _update_repository {
     my $self = shift;
     my $user = $self -> {"session"} -> get_user_byid();
 
-    $self -> log("repository", "Pulling repository for user ".$user -> {"username"});
+    $self -> log("repository", "Pulling repository for user ".$user -> {"username"}.", fetching path");
 
-    $self -> {"system"} -> {"git"} -> pull_repository($user -> {"username"})
+    my ($errors, $path) = $self -> _validate_repository_id();
+    return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $errors}))
+        if($errors);
+
+    $self -> log("repository", "Pulling repository for user ".$user -> {"username"}." path = $path");
+
+    $self -> {"system"} -> {"git"} -> pull_repository($user -> {"username"}, $path)
         or return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"system"} -> {"git"} -> errstr()}));
 
     return $self -> {"template"} -> load_template("dashboard/info_box.tem", {"***message***" => "{L_WEBSITE_PULL_SUCCESS}"});
@@ -445,9 +522,15 @@ sub _delete_repository {
     my $self = shift;
     my $user = $self -> {"session"} -> get_user_byid();
 
-    $self -> log("repository", "Deleting repository for user ".$user -> {"username"});
+    $self -> log("repository", "Deleting repository for user ".$user -> {"username"}.", fetching path");
 
-    $self -> {"system"} -> {"git"} -> delete_repository($user -> {"username"})
+    my ($errors, $path) = $self -> _validate_repository_id();
+    return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $errors}))
+        if($errors);
+
+    $self -> log("repository", "Deleting repository for user ".$user -> {"username"}." path = $path");
+
+    $self -> {"system"} -> {"git"} -> delete_repository($user -> {"username"}, $path)
         or return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"system"} -> {"git"} -> errstr()}));
 
     return { "return" => { "url" => $self -> build_url(fullurl => 1, block => "manage", pathinfo => ["webdel"], api => []) }};
