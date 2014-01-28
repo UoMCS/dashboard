@@ -248,18 +248,10 @@ sub write_config {
     return $self -> self_error("Config write failed: illegal username specified") if(!$safename);
 
     # Do nothing if the user has no web tree
-    if($self -> user_web_repo_exists($safename)) {
-        # perform the pre-pull step. Need to do this to get write permission!
-        my $res = `sudo $self->{settings}->{repostools}->{prepull} $safename`;
-        return $self -> self_error("Config write failed: $res") if($res);
-
-        my $target = blind_untaint(path_join($self -> {"settings"} -> {"git"} -> {"webtempdir"}, $safename));
+    my $target = blind_untaint(path_join($self -> {"settings"} -> {"git"} -> {"webbasedir"}, $safename));
+    if(-d $target) {
         $self -> _write_config_file($target, $safename)
             or return undef;
-
-        # Move the web tree back again
-        $res = `sudo $self->{settings}->{repostools}->{postgit} $safename`;
-        return $self -> self_error("Pull failed: $res") if($res);
     }
 
     return 1;
@@ -283,9 +275,10 @@ sub _write_config_file {
 
     $self -> clear_error();
 
+    my $configname = path_join($dir, "config.inc.php");
+
     # Do nothing if the user has no database
     if($self -> {"databases"} -> user_database_exists($username)) {
-        my $configname = path_join($dir, "config.inc.php");
         my $pass = $self -> {"databases"} -> get_user_password($username)
             or return $self -> self_error($self -> {"databases"} -> errstr());
 
@@ -307,6 +300,9 @@ sub _write_config_file {
 
         my $res = `/usr/bin/chmod o= '$configname' 2>&1`;
         return $self -> self_error("Unable to write configuration file: $res") if($res);
+    } else {
+        unlink $configname or return $self -> self_error("Unable to remove old config file: $!")
+            if(-f $configname);
     }
 
     return 1;
