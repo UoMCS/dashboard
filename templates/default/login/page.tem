@@ -27,4 +27,15 @@
         ***doclink***
     </div>
 </body>
+<script type="text/javascript">
+// <![CDATA[
+    $$('a.rel').each(function(element) {
+                         element.addEvent('click',
+                                          function (e) {
+                                              e.stop();
+                                              window.open(element.href);
+                                          });
+                     });
+// ]]>
+</script>
 </html>
