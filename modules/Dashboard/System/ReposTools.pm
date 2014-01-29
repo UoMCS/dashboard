@@ -113,7 +113,7 @@ sub get_token {
 # @return True on success, undef on error.
 sub set_primary_site {
     my $self     = shift;
-    my $username = shift;
+    my $username = lc(shift);
     my $path     = shift;
 
     $self -> clear_error();
@@ -144,7 +144,7 @@ sub set_primary_site {
 #         a primary, undef on error.
 sub get_primary_site {
     my $self     = shift;
-    my $username = shift;
+    my $username = lc(shift);
 
     $self -> clear_error();
 

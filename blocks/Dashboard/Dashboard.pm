@@ -679,10 +679,10 @@ sub _set_primary {
 
     $self -> log("repository", "Setting primary for user ".$user -> {"username"}." to $path");
 
-    $self -> {"system"} -> {"repostools"} -> set_primary_site($user -> {"username"}, $path)
+    $self -> {"system"} -> {"repostools"} -> set_primary_site(lc($user -> {"username"}), $path)
         or return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"system"} -> {"repostools"} -> errstr()}));
 
-    $self -> {"system"} -> {"git"} -> write_primary_redirect($user -> {"username"})
+    $self -> {"system"} -> {"git"} -> write_primary_redirect(lc($user -> {"username"}))
         or return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"system"} -> {"git"} -> errstr()}));
 
     return { 'response' => { 'status' => 'ok' } };
