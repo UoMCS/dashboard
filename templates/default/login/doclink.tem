@@ -1,1 +1,1 @@
-        <div class="footer"><a href="***docurl***">Documentation is available</a> for this page.</a></div>
+        <div class="footer">{L_LOGIN_DOCLINK}</div>
