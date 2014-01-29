@@ -10,7 +10,7 @@ LOGIN_FAILED    = Login failed
 LOGIN_RECOVER   = Forgotten your username or password?
 LOGIN_SENDACT   = Click to resend your activation code
 
-LOGIN_DOCLINK   = <a href="***docurl***">Documentation is available</a> for this page.</a>
+LOGIN_DOCLINK   = <a href="***docurl***" class="rel">Documentation is available</a> for this page.</a>
 
 PERSIST_WARNING = <strong>WARNING</strong>: do not enable the "Remember me" option on shared, cluster, or public computers. This option should only be enabled on machines you have exclusive access to.
 
