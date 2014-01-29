@@ -68,12 +68,12 @@ sub init {
                                                                    logger   => $self -> {"logger"})
         or return $self -> self_error("ReposTools init failed: ".$Webperl::SystemModule::errstr);
 
-    $self -> {"git"} = Dashboard::System::Git -> new(dbh       => $self -> {"dbh"},
-                                                     settings  => $self -> {"settings"},
-                                                     logger    => $self -> {"logger"},
-                                                     databases => $self -> {"databases"})
+    $self -> {"git"} = Dashboard::System::Git -> new(dbh        => $self -> {"dbh"},
+                                                     settings   => $self -> {"settings"},
+                                                     logger     => $self -> {"logger"},
+                                                     databases  => $self -> {"databases"},
+                                                     repostools => $self -> {"repostools"})
         or return $self -> self_error("Git init failed: ".$Webperl::SystemModule::errstr);
-
 
     $self -> {"metadata"} = Dashboard::System::Metadata -> new(dbh      => $self -> {"dbh"},
                                                               settings => $self -> {"settings"},

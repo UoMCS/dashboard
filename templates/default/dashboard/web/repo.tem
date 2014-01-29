@@ -7,6 +7,7 @@
             <tr><th>{L_WEBSITE_LOCATION}</th><th>{L_WEBSITE_SOURCE}</th><th>{L_WEBSITE_CONTROLS}</th></tr>
 ***repos***
         </table>
+***primary***
         <h3>{L_WEBSITE_PUBLISH}</h3>
 ***addform***
     </div>

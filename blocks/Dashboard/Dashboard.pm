@@ -29,7 +29,7 @@ use Data::Dumper;
 #  Repository/web related
 
 ## @method private @ _validate_repository_id()
-# Determine whether the use has set a subpath to operate on, and if so whether
+# Determine whether the user has set a subpath to operate on, and if so whether
 # it corresponds to a valid path.
 #
 # @return Two values: a string containing any error messages generated during
@@ -39,7 +39,7 @@ sub _validate_repository_id {
     my $self = shift;
     my $user = $self -> {"session"} -> get_user_byid();
 
-    # Check whether an error has been specified
+    # Check whether an path has been specified
     my ($path, $error) = $self -> validate_string("id", {"required"   => 0,
                                                          "nicename"   => $self -> {"template"} -> replace_langvar("WEBSITE_ID"),
                                                          "maxlen"     => 24,
@@ -47,7 +47,6 @@ sub _validate_repository_id {
                                                          "formatdesc" => $self -> {"template"} -> replace_langvar("WEBSITE_ERR_BADPATH"),
                                                   });
     return ($error, "") if($error);
-    print STDERR "Got path $path";
 
     # If the path is -, empty it so it can be used 'as is'
     $path = "" if($path eq "-");
@@ -56,6 +55,51 @@ sub _validate_repository_id {
     my $exists = $self -> {"system"} -> {"git"} -> user_web_repo_exists($user -> {"username"}, $path);
     return ($self -> {"template"} -> replace_langvar("WEBSITE_ERR_BADID"), $path) unless($exists);
 
+    return ("", $path);
+}
+
+
+## @method private @ _validate_primary_id()
+# Determine whether the user has set a subpath to use as the primary for the
+# user's site, and if it corresponds to a valid path.
+#
+# @return Two values: a string containing any error messages generated during
+#         validation, and the subpath string. If the subpath has been specified
+#         but corresponds to the root, this will be the empty string.
+sub _validate_primary_id {
+    my $self = shift;
+    my $user = $self -> {"session"} -> get_user_byid();
+
+    # Users can only set a primary if they have subdirectories
+    my $repos = $self -> {"system"} -> {"git"} -> user_web_repo_list($user -> {"username"});
+    return $self -> {"template"} -> replace_langvar("WEBSITE_ERR_NOREPOS")
+        if(!$repos || !scalar(@{$repos}));
+
+    # Build the options list for validation, and check for root projects at the same time
+    my $hasroot = 0;
+    my @options = ({"value" => "-",
+                    "name"  => $self -> {"template"} -> replace_langvar("WEBSITE_PRIMINDEX")});
+    foreach my $entry (@{$repos}) {
+        $hasroot = 1 if(!$entry -> {"subdir"});
+        push(@options, { "value" => $entry -> {"subdir"},
+                         "name"  => path_join($self -> {"settings"} -> {"git"} -> {"webbaseurl"}, lc($user -> {"username"}), $entry -> {"subdir"},"/"),
+                       });
+    }
+
+    return $self -> {"template"} -> replace_langvar("WEBSITE_ERR_GOTROOT")
+        if($hasroot);
+
+    # Check whether an path has been specified
+    my ($path, $error) = $self -> validate_options("primary", {"required" => 1,
+                                                               "nicename" => $self -> {"template"} -> replace_langvar("WEBSITE_PRIMARY"),
+                                                               "source"   => \@options,
+                                                  });
+    return ($error, "") if($error);
+
+    # If the path is -, empty it so it can be used 'as is'
+    $path = "" if($path eq "-");
+
+    # No errors, and path is valid.
     return ("", $path);
 }
 
@@ -115,7 +159,6 @@ sub _validate_repository_fields {
 
     # A path has been specified, make sure a project doesn't already exist there
     } else {
-        print STDERR "Path specified as ".$args -> {"web-path"}." checking exists";
         my $exists = $self -> {"system"} -> {"git"} -> user_web_repo_exists($user -> {"username"}, $args -> {"web-path"});
 
         $errors .= $self -> {"template"} -> load_template("error/error_item.tem", {"***error***" => "{L_WEBSITE_ERR_EXISTS}"})
@@ -336,13 +379,23 @@ sub _generate_web_publish {
 
     my $rlist = "";
     my $hasroot = 0;
+    my @options = ({"value" => "-",
+                    "name"  => $self -> {"template"} -> replace_langvar("WEBSITE_PRIMINDEX")});
     foreach my $entry (@{$repos}) {
         $rlist .= $self -> {"template"} -> load_template("dashboard/web/repo-row.tem", {"***url***"     => path_join($self -> {"settings"} -> {"git"} -> {"webbaseurl"}, lc($user -> {"username"}), $entry -> {"subdir"},"/"),
                                                                                         "***subdir***"  => path_join($self -> {"settings"} -> {"git"} -> {"webbaseurl"}, lc($user -> {"username"}), $entry -> {"subdir"},"/"),
                                                                                         "***id***"      => $entry -> {"subdir"} || "-",
                                                                                         "***source***"  => $entry -> {"origin"} });
         $hasroot = 1 if(!$entry -> {"subdir"});
+
+        push(@options, { "value" => $entry -> {"subdir"},
+                         "name"  => path_join($self -> {"settings"} -> {"git"} -> {"webbaseurl"}, lc($user -> {"username"}), $entry -> {"subdir"},"/"),
+                       });
     }
+
+    my $primary = $self -> {"template"} -> load_template("dashboard/web/primary_".($hasroot ? "disabled.tem" : "enabled.tem"),
+                                                         {"***sites***"   => $self -> {"template"} -> build_optionlist(\@options, $self -> {"system"} -> {"repostools"} -> get_primary_site(lc($user -> {"username"}))),
+                                                          "***baseurl***" => path_join($self -> {"settings"} -> {"git"} -> {"webbaseurl"}, lc($user -> {"username"}))});
 
     my $addform = $self -> {"template"} -> load_template("dashboard/web/addform_".($hasroot ? "gotroot.tem" : "noroot.tem"),
                                                          { "***web-repos***" => $args -> {"web-repos"},
@@ -351,6 +404,7 @@ sub _generate_web_publish {
 
     return $self -> {"template"} -> load_template("dashboard/web/repo.tem"  , {"***repos***"     => $rlist,
                                                                                "***addform***"   => $addform,
+                                                                               "***primary***"   => $primary,
                                                                                "***docs***"      => $self -> get_documentation_url("web"),
                                                                                "***web_url***"   => path_join($self -> {"settings"} -> {"git"} -> {"webbaseurl"}, lc($user -> {"username"}),"/"),
                                                                                "***pull_url***"  => $self -> build_url(block => "manage", "pathinfo" => [ "pullrepos" ]),
@@ -466,7 +520,7 @@ sub _generate_dashboard {
 
 
 # ============================================================================
-#  API functions
+#  API functions - website
 
 ## @method private $ _show_token()
 # An API function that generates a token information string to send to the
@@ -609,6 +663,35 @@ sub _change_repository {
 }
 
 
+## @method private $ _set_primary()
+# Update the primary site set for the user
+#
+# @return A hash containing an API response.
+sub _set_primary {
+    my $self = shift;
+    my $user = $self -> {"session"} -> get_user_byid();
+
+    $self -> log("repository", "Updating primary for user ".$user -> {"username"});
+
+    my ($errors, $path) = $self -> _validate_primary_id();
+    return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $errors}))
+        if($errors);
+
+    $self -> log("repository", "Setting primary for user ".$user -> {"username"}." to $path");
+
+    $self -> {"system"} -> {"repostools"} -> set_primary_site($user -> {"username"}, $path)
+        or return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"system"} -> {"repostools"} -> errstr()}));
+
+    $self -> {"system"} -> {"git"} -> write_primary_redirect($user -> {"username"})
+        or return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"system"} -> {"git"} -> errstr()}));
+
+    return { 'response' => { 'status' => 'ok' } };
+}
+
+
+# ============================================================================
+#  API functions - database
+
 # @method private $ _require_database_change_confirm()
 # An API function that generates a confirmation request to show to the user
 # to request the new password for their database.
@@ -706,6 +789,7 @@ sub page_display {
             when ("websetcheck")  { return $self -> api_html_response($self -> _require_repository_change_confirm()); }
             when ("dowebnuke")    { return $self -> api_response($self -> _delete_repository()); }
             when ("dowebchange")  { return $self -> api_response($self -> _change_repository()); }
+            when ("setprimary")   { return $self -> api_response($self -> _set_primary()); }
 
             # database operations
             when ("dbnukecheck")  { return $self -> api_html_response($self -> _require_database_delete_confirm()); }

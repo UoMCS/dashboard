@@ -488,6 +488,33 @@ function autoset_project_dir(projfield, dirfield)
     }
 }
 
+
+function set_primary_project(projfield, spinner)
+{
+    var selected = projfield.getSelected()[0].get('value');
+
+    var req = new Request({ url: api_request_path("dashboard", "setprimary"),
+                            method: 'post',
+                            onRequest: function() {
+                                projfield.disabled = true;
+                                spinner.fade('in');
+                            },
+                            onSuccess: function(respText, respXML) {
+                                var err = respXML.getElementsByTagName("error")[0];
+
+                                if(err) {
+                                    $('errboxmsg').set('html', '<p class="error">'+err.getAttribute('info')+'</p>');
+                                    popbox.close();
+                                    errbox.open();
+                                }
+                                spinner.fade('out');
+                                projfield.disabled = false;
+                            }
+                          });
+    req.post({'primary': selected});
+}
+
+
 window.addEvent('domready', function()
 {
     if($('web-repos'))
@@ -496,6 +523,9 @@ window.addEvent('domready', function()
     if($('web-path'))
         new OverText('web-path', { wrap: true,
                                    poll: true});
+
+    if($('web-primary'))
+        $('web-primary').addEvent('change', function () { set_primary_project($('web-primary'), $('workspin-primary')); });
 
     if($('web-repos'))
         $('web-repos').addEvent('change', function () { autoset_project_dir($('web-repos'), $('web-path')); });

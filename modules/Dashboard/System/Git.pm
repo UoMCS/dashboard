@@ -22,7 +22,7 @@ package Dashboard::System::Git;
 
 use strict;
 use base qw(Webperl::SystemModule);
-use Webperl::Utils qw(path_join blind_untaint save_file);
+use Webperl::Utils qw(path_join blind_untaint load_file save_file);
 use Git::Repository;
 use v5.12;
 
@@ -109,6 +109,9 @@ sub delete_repository {
     my $res = `sudo $self->{settings}->{repostools}->{preclone} $safename $safedir`;
     return $self -> self_error("Delete failed: $res") if($res);
 
+    $self -> write_primary_redirect($safename) or return undef
+        if($subdir);
+
     # that should actually be all that is needed...
     return 1;
 }
@@ -158,6 +161,9 @@ sub clone_repository {
     $self -> _write_config_file(path_join($self -> {"settings"} -> {"git"} -> {"webbasedir"}, $safename), $username)
         or return undef;
 
+    $self -> write_primary_redirect($safename) or return undef
+        if($subdir);
+
     return 1;
 }
 
@@ -183,6 +189,9 @@ sub _pull_cleanup {
 
     $self -> _write_config_file($target, $username)
         or return undef;
+
+    $self -> write_primary_redirect($safename) or return undef
+        if($safedir);
 
     return 1;
 }
@@ -256,6 +265,56 @@ sub write_config {
 
     return 1;
 }
+
+
+## @method $ write_primary_redirect($username)
+# Update the primary site redirect information in the user's htaccess.
+#
+# @param username The name of the user to write the htaccess for.
+# @return true on success, undef on error.
+sub write_primary_redirect {
+    my $self     = shift;
+    my $username = lc(shift);
+
+    # do nothing if the user's web directory doesn't exist at all
+    return 1 if(!-d path_join($self -> {"settings"} -> {"git"} -> {"webbasedir"}, $username));
+
+    # Does the user have a primary set?
+    my $primary = $self -> {"repostools"} -> get_primary_site($username);
+    if($primary) {
+        # Is it valid?
+        if(!$self -> user_web_repo_exists($username, $primary)) {
+            # Nope, nuke the setting
+            $self -> {"repostools"} -> set_primary_site($username, "");
+            $primary = "";
+        }
+    }
+
+    # Process the htaccess
+    my $htaccess = path_join($self -> {"settings"} -> {"git"} -> {"webbasedir"}, $username, ".htaccess");
+    my $contents = "";
+    if(-f $htaccess) {
+        my $res = `/bin/chmod u+w '$htaccess' 2>&1`;
+        return $self -> self_error("Unable to write htaccess file: $res") if($res);
+
+        $contents = load_file($htaccess)
+            or return $self -> self_error("Error opening htaccess file: $!");
+
+        # Kill any pre-existing settings
+        $contents =~ s|RewriteEngine On\nRewriteRule \^\$ /$username/\w+/ \[L,R=301\]\n||g;
+    }
+
+    $contents .= "RewriteEngine On\nRewriteRule ^\$ /$username/$primary/ [L,R=301]\n"
+        if($primary);
+    eval { save_file($htaccess, $contents); };
+    return $self -> self_error("Unable to write htaccess file: $@") if($@);
+
+    my $res = `/bin/chmod u-w,g-w,o= '$htaccess' 2>&1`;
+    return $self -> self_error("Unable to write htaccess file: $res") if($res);
+
+    return 1;
+}
+
 
 
 # ============================================================================

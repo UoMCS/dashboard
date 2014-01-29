@@ -104,4 +104,58 @@ sub get_token {
 }
 
 
+## @method $ set_primary_site($username, $path)
+# Update the primary site selection for the specified user.
+#
+# @param username The name of the user to set the primary site for
+# @param path     The subdirectory path to use as the primary. If this is not set,
+#                 the user's primary site selection is deleted.
+# @return True on success, undef on error.
+sub set_primary_site {
+    my $self     = shift;
+    my $username = shift;
+    my $path     = shift;
+
+    $self -> clear_error();
+
+    my $nukeold = $self -> {"dbh"} -> prepare("DELETE FROM `".$self -> {"settings"} -> {"database"} -> {"primary"}."`
+                                               WHERE `username` LIKE ?");
+    $nukeold -> execute($username)
+        or return $self -> self_error("Unable to perform user primary site cleanup: ".$self -> {"dbh"} -> errstr);
+
+    if($path) {
+        my $newpri = $self -> {"dbh"} -> prepare("INSERT INTO  `".$self -> {"settings"} -> {"database"} -> {"primary"}."`
+                                                  (`username`, `subdir`)
+                                                  VALUES(?, ?)");
+        my $result = $newpri -> execute($username, $path);
+        return $self -> self_error("Unable to create primary site: ".$self -> {"dbh"} -> errstr) if(!$result);
+        return $self -> self_error("Primary site creation failed, no rows added") if($result eq "0E0");
+    }
+
+    return 1;
+}
+
+
+## @method $ get_primary_site($username)
+# Fetch the subdir name of the primary site set by the user.
+#
+# @param username The name of the user to fetch the primary site path for.
+# @return The site path on success, the empty string if the user has not set
+#         a primary, undef on error.
+sub get_primary_site {
+    my $self     = shift;
+    my $username = shift;
+
+    $self -> clear_error();
+
+    my $siteh = $self -> {"dbh"} -> prepare("SELECT `subdir`
+                                             FROM `".$self -> {"settings"} -> {"database"} -> {"primary"}."`
+                                             WHERE `username` LIKE ?");
+    $siteh -> execute($username)
+        or return $self -> self_error("Unable to perform user primary site lookup: ".$self -> {"dbh"} -> errstr);
+
+    my $site = $siteh -> fetchrow_arrayref();
+    return $site ? $site -> [0] : "";
+}
+
 1;

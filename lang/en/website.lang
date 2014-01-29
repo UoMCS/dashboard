@@ -16,6 +16,8 @@ WEBSITE_ERR_BASEUSED = Unable to publish this project into the root of your web 
 WEBSITE_ERR_GOTPROJ  = Unable to publish this project into the root of your web space: one or more projects have been published in subdirectories, this prevents publishing in the root of your site.
 WEBSITE_ERR_EXISTS   = The provided subdirectory name is already in use by another published project. Please either delete that published project, or use the 'Change project' feature for that published project to change it.
 WEBSITE_ERR_BADID    = The specified id (subdirectory) does not correspond to a valid published project.
+WEBSITE_ERR_NOREPOS  = Unable to set a primary website: no websites are available.
+WEBSITE_ERR_GOTROOT  = Unable to set a primary website: you have a project in the root of your website.
 
 WEBSITE_GOTREPOS   = This is a list of your currently published websites. You can manage them using the options in the 'controls' column for each website.
 WEBSITE_PUBLISH    = Publish project
@@ -49,3 +51,7 @@ WEBSITE_ERR_NOREPO = You do not currently have a published website.
 
 TOKEN_ERR_NOTOKEN  = No token provided when calling the remote update API.
 TOKEN_ERR_BADTOKEN = The provided token does not appear to be valid remote update token.
+
+WEBSITE_PRIMARY    = Primary website
+WEBSITE_PRIMINFO   = As you have published projects in subdirectories, you may select one of the projects to act as your 'primary' project. This is the project that visitors will be redirected to automatically when visiting <a href="***baseurl***" class="rel">***baseurl***</a>.
+WEBSITE_PRIMINDEX  = Use automatically generated directory index.
