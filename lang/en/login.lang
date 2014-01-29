@@ -1,6 +1,6 @@
 LOGIN_TITLE     = Log in
 LOGIN_LOGINFORM = Log in
-LOGIN_INTRO     = Enter your username and password to log in.
+LOGIN_INTRO     = Enter your username and password to log in (this will normally be your University of Manchester central login).
 LOGIN_USERNAME  = Username
 LOGIN_PASSWORD  = Password
 LOGIN_EMAIL     = Email address
