@@ -36,3 +36,11 @@ a:hover, a:focus {
 .alignright {
     text-align: right;
 }
+
+.footer {
+    text-align: center;
+    width: 50%;
+    margin: 0px auto;
+    font-size: 11px;
+    color: #777;
+}

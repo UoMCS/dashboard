@@ -1051,8 +1051,12 @@ sub page_display {
     my $self = shift;
 
     # We need to determine what the page title should be, and the content to shove in it...
-    my ($title, $body, $extrahead) = ("", "", "");
+    my ($title, $body, $extrahead, $doclink) = ("", "", "", "");
     my @pathinfo = $self -> {"cgi"} -> param("pathinfo");
+
+    my $docurl = $self -> get_documentation_url("login");
+    $doclink = $self -> {"template"} -> load_template("login/doclink.tem", {"***docurl***" => $docurl})
+        if($docurl);
 
     # User is attempting to do a password change
     if(defined($self -> {"cgi"} -> param("changepass"))) {
@@ -1214,7 +1218,8 @@ sub page_display {
     # Done generating the page content, return the filled in page template
     return $self -> {"template"} -> load_template("login/page.tem", {"***title***"     => $title,
                                                                      "***extrahead***" => $extrahead,
-                                                                     "***content***"   => $body,});
+                                                                     "***content***"   => $body,
+                                                                     "***doclink***"   => $doclink});
 }
 
 1;
