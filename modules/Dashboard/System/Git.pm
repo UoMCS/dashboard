@@ -360,8 +360,11 @@ sub _write_config_file {
 
         my $config = "<?php\n\n\$database_host = \"dbhost.cs.man.ac.uk\";\n\$database_user = \"$username\";\n\$database_pass = \"$pass\";\n\$database_name = \"$username\";\n\n$grouplist?>\n";
 
-        my $res = `/bin/chmod 640 '$configname' 2>&1`;
-        return $self -> self_error("Unable to write configuration file: $res") if($res);
+        my $res;
+        if(-f $configname) {
+            $res = `/bin/chmod 640 '$configname' 2>&1`;
+            return $self -> self_error("Unable to write configuration file: $res") if($res);
+        }
 
         eval { save_file($configname, $config); };
         return $self -> self_error("Unable to write configuration file: $@") if($@);
