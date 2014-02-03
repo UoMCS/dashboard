@@ -158,7 +158,7 @@ sub clone_repository {
     $res = `sudo $self->{settings}->{repostools}->{postgit} $safename $safedir`;
     return $self -> self_error("Clone failed: $res") if($res);
 
-    $self -> _write_config_file(path_join($self -> {"settings"} -> {"git"} -> {"webbasedir"}, $safename), $username)
+    $self -> write_config($safename)
         or return undef;
 
     $self -> write_primary_redirect($safename) or return undef
@@ -187,7 +187,7 @@ sub _pull_cleanup {
     my $res = `sudo $self->{settings}->{repostools}->{postgit} $safename $safedir`;
     return $self -> self_error("Pull failed: $res") if($res);
 
-    $self -> _write_config_file($target, $username)
+    $self -> write_config($safename)
         or return undef;
 
     $self -> write_primary_redirect($safename) or return undef
@@ -259,8 +259,14 @@ sub write_config {
     # Do nothing if the user has no web tree
     my $target = blind_untaint(path_join($self -> {"settings"} -> {"git"} -> {"webbasedir"}, $safename));
     if(-d $target) {
-        $self -> _write_config_file($target, $safename)
-            or return undef;
+
+        # User has web tree, need to write config into each git repo
+        my $user_repos = $self -> user_web_repo_list($safename);
+        foreach my $repo (@{$user_repos}) {
+            $target = path_join($self -> {"settings"} -> {"git"} -> {"webbasedir"}, $safename, $repo -> {"subdir"});
+            $self -> _write_config_file($target, $safename)
+                or return undef;
+        }
     }
 
     return 1;
@@ -354,10 +360,13 @@ sub _write_config_file {
 
         my $config = "<?php\n\n\$database_host = \"dbhost.cs.man.ac.uk\";\n\$database_user = \"$username\";\n\$database_pass = \"$pass\";\n\$database_name = \"$username\";\n\n$grouplist?>\n";
 
+        my $res = `/bin/chmod 640 '$configname' 2>&1`;
+        return $self -> self_error("Unable to write configuration file: $res") if($res);
+
         eval { save_file($configname, $config); };
         return $self -> self_error("Unable to write configuration file: $@") if($@);
 
-        my $res = `/bin/chmod o= '$configname' 2>&1`;
+        $res = `/bin/chmod 440 '$configname' 2>&1`;
         return $self -> self_error("Unable to write configuration file: $res") if($res);
     } else {
         unlink $configname or return $self -> self_error("Unable to remove old config file: $!")
