@@ -463,8 +463,11 @@ sub _generate_database {
         # Get the list of group databases the user should have access to
         my $groups = $self -> {"system"} -> {"userdata"} -> get_user_groupnames($user -> {"username"});
 
-        my $groupdbs = $self -> {"system"} -> {"databases"} -> set_user_group_databases($user -> {"username"}, $groups)
-            if($groups);
+        my $groupdbs = "";
+        if($groups) {
+           $self -> log("groups", "Doing groups for ".$user -> {"username"}.": ".join(",", @{$groups}));
+           $groupdbs = $self -> {"system"} -> {"databases"} -> set_user_group_databases($user -> {"username"}, $groups);
+        }
 
         # Update the config file if there have been changes.
         $self -> {"system"} -> {"git"} -> write_config($user -> {"username"})
@@ -495,6 +498,8 @@ sub _generate_dashboard {
 
     # Get the current user's information
     my $user  = $self -> {"session"} -> get_user_byid();
+
+    $user -> {"username"} = lc($user -> {"username"});
 
     # Build the web publish block
     my $webblock = $self -> _generate_web_publish($user, $args);
