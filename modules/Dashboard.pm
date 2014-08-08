@@ -1,4 +1,4 @@
-## @file
+>## @file
 # This file contains the implementation of the Dashboard block base class.
 #
 # @author  Chris Page &lt;chris@starforge.co.uk&gt;
@@ -21,7 +21,6 @@
 package Dashboard;
 
 use v5.12;
-use experimental 'smartmatch';
 use base qw(Webperl::Block); # Features are just a specific form of Block
 use CGI::Util qw(escape);
 use HTML::Entities;

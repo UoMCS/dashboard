@@ -20,6 +20,7 @@
 package Dashboard::Dashboard;
 
 use strict;
+use experimental 'smartmatch';
 use base qw(Dashboard); # This class extends the Dashboard block class
 use v5.12;
 use Webperl::Utils qw(path_join);
