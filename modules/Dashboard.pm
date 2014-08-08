@@ -20,7 +20,7 @@
 #
 package Dashboard;
 
-use strict;
+use v5.12;
 use base qw(Webperl::Block); # Features are just a specific form of Block
 use CGI::Util qw(escape);
 use HTML::Entities;
