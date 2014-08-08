@@ -22,7 +22,7 @@
 package Dashboard::Userbar;
 
 use strict;
-use experimental;
+use experimental 'smartmatch';
 use base qw(Dashboard);
 use v5.12;
 

@@ -21,7 +21,7 @@
 package Dashboard;
 
 use v5.12;
-use experimental;
+use experimental 'smartmatch';
 use base qw(Webperl::Block); # Features are just a specific form of Block
 use CGI::Util qw(escape);
 use HTML::Entities;
