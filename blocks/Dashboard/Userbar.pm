@@ -22,11 +22,9 @@
 package Dashboard::Userbar;
 
 use strict;
+use experimental;
 use base qw(Dashboard);
 use v5.12;
-
-# FIXME: Temporary fix for 5.18 making given/when spit out warnings.
-no if $] >= 5.018, warnings => "experimental::smartmatch";
 
 # ==============================================================================
 #  Bar generation

@@ -21,14 +21,13 @@
 package Dashboard;
 
 use v5.12;
+use experimental;
 use base qw(Webperl::Block); # Features are just a specific form of Block
 use CGI::Util qw(escape);
 use HTML::Entities;
 use Webperl::Utils qw(join_complex path_join);
 use XML::Simple;
 
-# FIXME: Temporary fix for 5.18 making given/when spit out warnings.
-no if $] >= 5.018, warnings => "experimental::smartmatch";
 
 # ============================================================================
 #  Constructor
