@@ -27,6 +27,9 @@ use HTML::Entities;
 use Webperl::Utils qw(join_complex path_join);
 use XML::Simple;
 
+# FIXME: Temporary fix for 5.18 making given/when spit out warnings.
+no if $] >= 5.018, warnings => "experimental::smartmatch";
+
 # ============================================================================
 #  Constructor
 
