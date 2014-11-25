@@ -114,7 +114,7 @@ if(-e $tempdir) {
 
         # Force the htaccess
         my $htaccess = path_join($userbase, ".htaccess");
-        create_htaccess($htaccess, $userdir);
+        create_htaccess($htaccess, $userbase);
         $res = `/bin/chmod -R o=,g-w,u-w '$htaccess' 2>&1`;
         fatal_error("Unable to complete setup: $res") if($res);
 
