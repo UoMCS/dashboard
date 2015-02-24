@@ -474,7 +474,8 @@ sub _generate_database {
         $self -> {"system"} -> {"git"} -> write_config($user -> {"username"})
             if($groupdbs && $groupdbs -> {"_internal"} -> {"save_config"});
 
-        return $self -> {"template"} -> load_template("dashboard/db/db.tem"  , {"***username***" => lc($user -> {"username"}),
+        return $self -> {"template"} -> load_template("dashboard/db/db.tem"  , {"***hostname***" => $self -> {"settings"} -> {"userdatabase"} -> {"hostname"},
+                                                                                "***username***" => lc($user -> {"username"}),
                                                                                 "***password***" => "{L_DATABASE_PASSWORD_COPOUT}",
                                                                                 "***docs***"     => $self -> get_documentation_url("db"),
                                                                                 "***groups***"   => $self -> _generate_group_database($groupdbs),

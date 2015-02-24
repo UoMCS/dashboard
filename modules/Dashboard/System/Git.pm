@@ -358,7 +358,11 @@ sub _write_config_file {
         }
         $grouplist = "\$group_dbnames = array(\n$grouplist);\n\n" if($grouplist);
 
-        my $config = "<?php\n\n\$database_host = \"dbhost.cs.man.ac.uk\";\n\$database_user = \"$username\";\n\$database_pass = \"$pass\";\n\$database_name = \"$username\";\n\n$grouplist?>\n";
+        my $config = "<?php\n\n\$database_host = \"".$self -> {"settings"} -> {"userdatabase"} -> {"hostname"}."\";\n".
+                     "\$database_user = \"$username\";\n" .
+                     "\$database_pass = \"$pass\";\n".
+                     "\$database_name = \"$username\";\n".
+                     "\n$grouplist?>\n";
 
         my $res;
         if(-f $configname) {

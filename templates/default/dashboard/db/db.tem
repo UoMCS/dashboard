@@ -5,7 +5,7 @@
         <div>{L_DATABASE_GOTDATABASE}</div>
         <blockquote>
         <pre>&lt;?php
-$database_host = "dbhost.cs.man.ac.uk";
+$database_host = "***hostname***";
 $database_user = "***username***";
 $database_pass = "***password***";
 $database_name = "***username***";
@@ -13,7 +13,7 @@ $database_name = "***username***";
         </blockquote>
 ***groups***
         <div>{L_DATABASE_LOCATION}</div>
-        <blockquote><div><a href="https://dbhost.cs.man.ac.uk/phpMyAdmin/" class="rel">https://dbhost.cs.man.ac.uk/phpMyAdmin/</a></div></blockquote>
+        <blockquote><div><a href="https://***hostname***/phpMyAdmin/" class="rel">https://***hostname***/phpMyAdmin/</a></div></blockquote>
         <hr />
         <div class="submitbox">
             <img class="workspin" id="dbworkspinner" src="{V_[templatepath]}images/spinner.gif" width="16" height="16" alt="working" />
