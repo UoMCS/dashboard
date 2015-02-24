@@ -358,7 +358,8 @@ sub _write_config_file {
         }
         $grouplist = "\$group_dbnames = array(\n$grouplist);\n\n" if($grouplist);
 
-        my $config = "<?php\n\n\$database_host = \"".$self -> {"settings"} -> {"userdatabase"} -> {"hostname"}."\";\n".
+        my ($dbh, $dbhost, $dbuser, $dbpass) = $self -> {"databases"} -> get_user_database_server($username);
+        my $config = "<?php\n\n\$database_host = \"".($dbhost || "Unknown error occurred")."\";\n".
                      "\$database_user = \"$username\";\n" .
                      "\$database_pass = \"$pass\";\n".
                      "\$database_name = \"$username\";\n".
