@@ -215,15 +215,18 @@ sub create_user_account {
 }
 
 
-## @method $ create_user_database($username)
+## @method $ create_user_database($username, $dbname)
 # Create a database for the specified user and grant access to the user from
 # all allowed hosts. If the user's database already exists, this does nothing.
 #
 # @param username The name of the user to create the database for.
+# @param dbname   An optional database name. If not set, this defaults to
+#                 the username.
 # @return true on success, undef on error.
 sub create_user_database {
     my $self     = shift;
     my $username = shift;
+    my $dbname   = shift || $username;
 
     $self -> clear_error();
 
@@ -231,7 +234,7 @@ sub create_user_database {
         or return undef;
 
     foreach my $host (@{$self -> {"allowed_hosts"}}) {
-        $self -> _create_user_database($username, $host)
+        $self -> _create_user_database($username, $dbname, $host)
             or return undef;
     }
 
@@ -303,7 +306,7 @@ sub store_user_password {
 
     $self -> clear_error();
 
-    my $setpassh = $self -> {"dbh"} -> prepare("INSERT INTO `".$self -> {"settings"} -> {"database"} -> {"userdbs"}."`
+    my $setpassh = $self -> {"dbh"} -> prepare("INSERT INTO `".$self -> {"settings"} -> {"database"} -> {"useraccts"}."`
                                                 (user_id, user_pass)
                                                 VALUES(?, ?)
                                                 ON DUPLICATE KEY UPDATE user_pass = VALUES(user_pass)");
@@ -329,7 +332,7 @@ sub get_user_password {
         or return undef;
 
     my $getpassh = $self -> {"dbh"} -> prepare("SELECT user_pass
-                                                FROM `".$self -> {"settings"} -> {"database"} -> {"userdbs"}."` AS p,
+                                                FROM `".$self -> {"settings"} -> {"database"} -> {"useraccts"}."` AS p,
                                                      `".$self -> {"settings"} -> {"database"} -> {"users"}."` AS u
                                                 WHERE p.user_id = u.user_id
                                                 AND u.username LIKE ?");
@@ -472,7 +475,7 @@ sub set_user_group_databases {
             next if($groups -> {$database} -> {"active"}); # Keep access to active groups
 
             $self -> log("database", "Removing access to $database from $username\@$host");
-            $self -> _revoke_all($database, $username, $host)
+            $self -> _revoke_all($username, $database, $host)
                 or return undef;
 
             $groups -> {"_internal"} -> {"save_config"} = 1; # mark the need to save the config
@@ -666,27 +669,29 @@ sub _create_database {
 }
 
 
-## @method private $ _create_user_database($username, $host)
+## @method private $ _create_user_database($username, $dbname, $host)
 # Create a database for the specified user if it does not exist, and
 # grant access to the user from the specified host.
 #
 # @param username The name of the user account to create the database for.
 #                 Must have been passed through safe_username() first!
+# @param name     The name of the database to create.
 # @param host     The host to use for the user.
 # @return true on success, undef on error.
 sub _create_user_database {
     my $self     = shift;
     my $username = shift;
+    my $dbname   = shift;
     my $host     = shift;
 
     $self -> clear_error();
 
     # Create the database if it doesn't exist.
-    $self -> _create_database($username, $username) or return undef
-        unless($self -> _database_exists($username, $username));
+    $self -> _create_database($username, $dbname) or return undef
+        unless($self -> _database_exists($username, $dbname));
 
     # Now give the user access
-    $self -> _grant_all($username, $username, $host)
+    $self -> _grant_all($username, $dbname, $host)
         or return undef;
 
     return 1;
@@ -772,7 +777,7 @@ sub _set_group_database {
     # Does the user have access from each host?
     foreach my $host (@{$self -> {"allowed_hosts"}}) {
         if(!$grouphash -> {$groupname} -> {$host} -> {"access"}) {
-            $self -> _grant_all($groupname, $username, $host)
+            $self -> _grant_all($username, $groupname, $host)
                 or return undef;
 
             $grouphash -> {$groupname} -> {$host} -> {"access"} = 1;
@@ -787,53 +792,53 @@ sub _set_group_database {
 }
 
 
-## @method private $ _grant_all($database, $username, $host)
+## @method private $ _grant_all($username, $dbname, $host)
 # Give all privileges on the specified database to the provided user.
 #
-# @param database The name of the database to grant access to.
 # @param username The name of the user to give the access to.
+# @param database The name of the database to grant access to.
 # @param host     The host the user is connecting from.
 # @return true on success, undef on error
 sub _grant_all {
     my $self     = shift;
-    my $database = shift;
     my $username = shift;
+    my $dbname   = shift;
     my $host     = shift;
 
-    $self -> log("database", "Granting all privileges on $database to $username\@$host");
+    $self -> log("database", "Granting all privileges on $dbname to $username\@$host");
 
     my ($dbh) = $self -> get_user_database_server($username)
         or return undef;
 
-    my $accessh = $dbh -> prepare("GRANT ALL PRIVILEGES ON `$database`.* TO ?\@?");
+    my $accessh = $dbh -> prepare("GRANT ALL PRIVILEGES ON `$dbname`.* TO ?\@?");
     $accessh -> execute($username, $host)
-        or return $self -> self_error("Unable to grant access to $database for $username: ".$dbh -> errstr);
+        or return $self -> self_error("Unable to grant access to $dbname for $username: ".$dbh -> errstr);
 
     return 1;
 }
 
 
-## @method private $ _revoke_all($database, $username, $host)
+## @method private $ _revoke_all($username, $dbname, $host)
 # Remove all privileges on the specified database from the provided user.
 #
-# @param database The name of the database to remove access to.
 # @param username The name of the user to remove the access from.
+# @param database The name of the database to remove access to.
 # @param host     The host the user is connecting from.
 # @return true on success, undef on error
 sub _revoke_all {
     my $self     = shift;
-    my $database = shift;
     my $username = shift;
+    my $dbname   = shift;
     my $host     = shift;
 
-    $self -> log("database", "Revoking all privileges on $database from $username\@$host");
+    $self -> log("database", "Revoking all privileges on $dbname from $username\@$host");
 
     my ($dbh) = $self -> get_user_database_server($username)
         or return undef;
 
-    my $accessh = $dbh -> prepare("REVOKE ALL PRIVILEGES ON `$database`.* FROM ?\@?");
+    my $accessh = $dbh -> prepare("REVOKE ALL PRIVILEGES ON `$dbname`.* FROM ?\@?");
     $accessh -> execute($username, $host)
-        or return $self -> self_error("Unable to revoke access to $database from $username: ".$dbh -> errstr);
+        or return $self -> self_error("Unable to revoke access to $dbname from $username: ".$dbh -> errstr);
 
     return 1;
 }
