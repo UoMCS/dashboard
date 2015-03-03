@@ -23,6 +23,7 @@ WEBSITE_GOTREPOS   = This is a list of your currently published websites. You ca
 WEBSITE_PUBLISH    = Publish project
 WEBSITE_LOCATION   = Loction
 WEBSITE_SOURCE     = Git project
+WEBSITE_DATABASE   = Database
 WEBSITE_CONTROLS   = Controls
 
 WEBSITE_ADD_GOTROOT = You can not publish any more projects because you have published a project at the root of your web space. To publish more than one project you must delete the above project, and publish all projects into subdirectories of your web space.
@@ -55,3 +56,5 @@ TOKEN_ERR_BADTOKEN = The provided token does not appear to be valid remote updat
 WEBSITE_PRIMARY    = Primary website
 WEBSITE_PRIMINFO   = As you have published projects in subdirectories, you may select one of the projects to act as your 'primary' project. This is the project that visitors will be redirected to automatically when visiting <a href="***baseurl***" class="rel">***baseurl***</a>.
 WEBSITE_PRIMINDEX  = Use automatically generated directory index.
+
+WEBSITE_DEFDB      = Default

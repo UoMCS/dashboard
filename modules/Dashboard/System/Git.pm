@@ -243,7 +243,9 @@ sub pull_repository {
 
 
 ## @method $ write_config($username)
-# If the user's web directory exists, write a new config.inc.php to it
+# If the user's web directory exists, write a new config.inc.php to it. If the
+# user has multiple project subdirectories, this will (re)build the config files
+# for all the project directories.
 #
 # @param username The name of the user to set the config for
 # @return true on success, undef on error
@@ -264,7 +266,7 @@ sub write_config {
         my $user_repos = $self -> user_web_repo_list($safename);
         foreach my $repo (@{$user_repos}) {
             $target = path_join($self -> {"settings"} -> {"git"} -> {"webbasedir"}, $safename, $repo -> {"subdir"});
-            $self -> _write_config_file($target, $safename)
+            $self -> _write_config_file($target, $safename, $repo -> {"subdir"})
                 or return undef;
         }
     }
@@ -327,22 +329,24 @@ sub write_primary_redirect {
 #  Private and ghastly internals
 
 
-## @method private $ _write_config_file($dir, $username)
+## @method private $ _write_config_file($dir, $username, $projectdir)
 # Write the config.inc.php for the specified user into the directory specified.
 #
-# @param dir      The directory to write the config.inc.php file.
-# @param username The name of the user to create the file for
+# @param dir        The directory to write the config.inc.php file.
+# @param username   The name of the user to create the file for
+# @param projectdir The subdirectory the project is in.
 # @return true on success, undef on error.
 sub _write_config_file {
-    my $self     = shift;
-    my $dir      = shift;
-    my $username = shift;
+    my $self       = shift;
+    my $dir        = shift;
+    my $username   = shift;
+    my $projectdir = shift;
 
     $self -> clear_error();
 
     my $configname = path_join($dir, "config.inc.php");
 
-    # Do nothing if the user has no database
+    # Do nothing if the user has no database(s)
     if($self -> {"databases"} -> user_database_exists($username)) {
         my $pass = $self -> {"databases"} -> get_user_password($username)
             or return $self -> self_error($self -> {"databases"} -> errstr());
@@ -359,10 +363,12 @@ sub _write_config_file {
         $grouplist = "\$group_dbnames = array(\n$grouplist);\n\n" if($grouplist);
 
         my ($dbh, $dbhost, $dbuser, $dbpass) = $self -> {"databases"} -> get_user_database_server($username);
+        my $dbname = $self -> {"databases"} -> get_user_database($username, $projectdir) || $username;
+
         my $config = "<?php\n\n\$database_host = \"".($dbhost || "Unknown error occurred")."\";\n".
                      "\$database_user = \"$username\";\n" .
                      "\$database_pass = \"$pass\";\n".
-                     "\$database_name = \"$username\";\n".
+                     "\$database_name = \"$dbname\";\n".
                      "\n$grouplist?>\n";
 
         my $res;

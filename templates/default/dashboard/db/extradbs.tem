@@ -1,0 +1,10 @@
+<h3>{L_DATABASE_EXTRADBS}</h3>
+<table class="extradbs">
+    <thead>
+        <tr><th>{L_DATABASE_EXTRA_NAME}</th><th>{L_DATABASE_EXTRA_SOURCE}</th><th>{L_WEBSITE_CONTROLS}</th></tr>
+    </thead>
+    <tbody id="extradbs">
+***extradbs***
+    </tbody>
+<table>
+<div class="newdb">{L_DATABASE_EXTRA_CLONE} <select id="otherdb">***otherdbs***</select><button id="createdb" class="button blue">{L_DATABASE_EXTRA_CREATE}</button></div>

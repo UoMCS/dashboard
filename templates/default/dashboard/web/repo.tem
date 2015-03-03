@@ -4,7 +4,7 @@
     <div class="sbcontent">
         <div>{L_WEBSITE_GOTREPOS}</div>
         <table class="listtable">
-            <tr><th>{L_WEBSITE_LOCATION}</th><th>{L_WEBSITE_SOURCE}</th><th>{L_WEBSITE_CONTROLS}</th></tr>
+            <tr><th>{L_WEBSITE_LOCATION}</th><th>{L_WEBSITE_SOURCE}</th>***extradbs***<th>{L_WEBSITE_CONTROLS}</th></tr>
 ***repos***
         </table>
 ***primary***

@@ -13,7 +13,7 @@ RewriteEngine On
 # RewriteBase /subdir/
 RewriteBase /dashboard/
 
-RewriteCond %{REQUEST_URI} !^/dashboard/(templates|media|docs|ckeditor|images|index.cgi)
+RewriteCond %{REQUEST_URI} !^/dashboard/(templates|media|docs|ckeditor|images|index.cgi|autodocs)
 RewriteRule (.*) index.cgi/$1 [PT,L]
 
 # Compress text, html, javascript, css, xml:

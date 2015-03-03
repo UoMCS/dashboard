@@ -56,13 +56,18 @@ div.content h3 {
 
 table.listtable {
     width: 100%;
+    border-collapse: collapse;
+    margin-top: 5px
 }
 
 table.listtable tr td, table.listtable tr th {
     border-bottom: 1px solid #ddd;
-    padding: 7px 3px;
     vertical-align: middle;
     white-space: nowrap;
+}
+
+table.listtable tr td {
+    padding: 7px 3px;
 }
 
 table.listtable tr:last-child td {
@@ -129,4 +134,29 @@ table.listtable tr:hover td.controls ul.controls {
 
 .control.change:hover {
     background-position: -48px -32px;
+}
+
+table.extradbs {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 5px
+}
+
+table.extradbs tr td, table.extradbs tr th {
+    border-bottom: 1px solid #ddd;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+table.extradbs tr td {
+    padding: 7px 3px;
+}
+
+table.extradbs tr:last-child td {
+    border-bottom: none;
+}
+
+table.extradbs tr td.controls {
+    width: 128px;
+    padding: 0px;
 }

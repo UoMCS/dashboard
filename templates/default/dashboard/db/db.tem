@@ -14,6 +14,7 @@ $database_name = "***username***";
 ***groups***
         <div>{L_DATABASE_LOCATION}</div>
         <blockquote><div><a href="https://***hostname***/phpMyAdmin/" class="rel">https://***hostname***/phpMyAdmin/</a></div></blockquote>
+***extradbs***
         <hr />
         <div class="submitbox">
             <img class="workspin" id="dbworkspinner" src="{V_[templatepath]}images/spinner.gif" width="16" height="16" alt="working" />

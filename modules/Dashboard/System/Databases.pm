@@ -238,6 +238,9 @@ sub create_user_database {
             or return undef;
     }
 
+    $self -> set_user_database($username, $dbname)
+        or return undef;
+
     return 1;
 }
 
@@ -257,8 +260,13 @@ sub delete_user_account {
     $username = $self -> safe_username($username)
         or return undef;
 
-    $self -> _delete_database($username, $username)
+    my $databases = $self -> get_user_databases($username)
         or return undef;
+
+    foreach my $database (@{$databases}) {
+        $self -> delete_user_database($username, $database -> {"name"})
+            or return undef;
+    }
 
     foreach my $host (@{$self -> {"allowed_hosts"}}) {
         $self -> _delete_user($username, $host)
@@ -343,6 +351,232 @@ sub get_user_password {
         or return $self -> self_error("No information stored for user $username");
 
     return $pass -> [0];
+}
+
+
+# ============================================================================
+#  Multi-database support stuff
+
+
+## @method $ set_user_database($username, $dbname, $project, $source)
+# Associate the specified database with the provided user. This allows the system
+# to keep track of which databases belong specifically to a given user (rather
+# than shared between users, as with group databases). Most users will only have
+# a single database, but users with elevated permissions may have multiple.
+#
+# @param username The name of the user the database belongs to.
+# @param dbname   The name of the database.
+# @param project  The project directory to associate the database with. If NULL,
+#                 it is the user's default global database.
+# @param source   If the database is a clone of another, this is the name of
+#                 the source database. undef if not a clone.
+# @return true on success, undef on error.
+sub set_user_database {
+    my $self     = shift;
+    my $username = shift;
+    my $dbname   = shift;
+    my $project  = shift;
+    my $source   = shift;
+
+    $self -> clear_error();
+
+    my $user = $self -> {"session"} -> get_user($username, 1)
+        or return $self -> self_error("Unable to get details for user '$username': ".$self -> {"session"} -> errstr());
+
+    # Use the unique constraint on the (userid,dbname) index to allow updates to source
+    # without special update code.
+    my $setudbh = $self -> {"dbh"} -> prepare("INSERT INTO `".$self -> {"settings"} -> {"database"} -> {"userdatabases"}."`
+                                               (`user_id`, `dbname`, `source`) VALUES(?, ?, ?)
+                                               ON DUPLICATE KEY UPDATE
+                                               `source` = VALUES(`source`)");
+    $setudbh -> execute($user -> {"user_id"}, $dbname, $source)
+        or return $self -> self_error("Unable to set user database: ".$self -> {"dbh"} -> errstr());
+
+    return $self -> set_user_database_project($username, $dbname, $project)
+        if($project);
+
+    return 1;
+}
+
+
+## @method $ delete_user_database($username, $dbname)
+# Remove the specfified database from the user's list of databases. This will also
+# remove any project allocations for the database for the user.
+#
+# @param username The name of the user who owns the database.
+# @param dbname   The name of the database to delete.
+# @return true on success, undef on error.
+sub delete_user_database {
+    my $self     = shift;
+    my $username = shift;
+    my $dbname   = shift;
+
+    $self -> clear_error();
+
+    $self -> _delete_database($username, $database -> {"name"})
+        or return undef;
+
+    my $user = $self -> {"session"} -> get_user($username, 1)
+        or return $self -> self_error("Unable to get details for user '$username': ".$self -> {"session"} -> errstr());
+
+    # Find the ID for the database, this will handily ensure it exists too
+    my $dbid = $self -> _get_user_database_id($username, $dbname)
+        or return undef;
+
+    # Nuke the database...
+    my $nukeh = $self -> {"dbh"} -> prepare("DELETE FROM `".$self -> {"settings"} -> {"database"} -> {"userdatabases"}."`
+                                             WHERE `user_id` = ?
+                                             AND `dbname` LIKE ?");
+    $nukeh -> execute($user -> {"id"}, $dbname)
+        or return $self -> self_error("Unable to delete user database row: ".$self -> {"dbh"} -> errstr());
+
+    # and any project mappings that reference it
+    my $maph = $self -> {"dbh"} -> prepare("DELETE FROM `".$self -> {"settings"} -> {"database"} -> {"userprojdbs"}."`
+                                            WHERE `database_id` = ?");
+    $maph -> execute($dbid)
+        or return $self -> self_error("Unable to remove database-project mappings for $dbname:".$self -> {"dbh"} -> errstr());
+
+    return 1;
+}
+
+
+## @method @ get_user_databases($username)
+# Fetch a list of all databases owned by the specified user, and if possible the
+# project(s) those databases are associated with.
+#
+# @param username The name of the user to fetchthe database list for.
+# @return A reference to an array of database hashes, each element contains the
+#         name and a reference to an array of projects the database is
+#         associated with, or undef on error.
+sub get_user_databases {
+    my $self     = shift;
+    my $username = shift;
+
+    $self -> clear_error();
+
+    my $user = $self -> {"session"} -> get_user($username, 1)
+        or return $self -> self_error("Unable to get details for user '$username': ".$self -> {"session"} -> errstr());
+
+    # Query to locate all the databases owned by the user
+    my $dbdatah = $self -> {"dbh"} -> prepare("SELECT *
+                                               FROM `".$self -> {"settings"} -> {"database"} -> {"userdatabases"}."`
+                                               WHERE `user_id` = ?");
+
+    # Query to fetch the projects a database is associated with
+    my $dbprojh = $self -> {"dbh"} -> prepare("SELECT `project`
+                                               FROM `".$self -> {"settings"} -> {"database"} -> {"userprojdbs"}."`
+                                               WHERE `user_id` = ?
+                                               AND `database_id` = ?");
+
+    $dbdatah -> execute($user -> {"id"})
+        or return $self -> self_error("Unable to execute user database lookup: ".$self -> {"dbh"} -> errstr());
+
+    my @databases = ();
+    while(my $data = $dbdatah -> fetchrow_hashref()) {
+        $dbprojh -> execute($user -> {"id"}, $data -> {"id"})
+            or return $self -> self_error("Unable to look up upser project database information: ".$self -> {"dbh"} -> errstr);
+
+        my @projects = ();
+        while(my $proj = $dbprojh -> fetchrow_arrayref()) {
+            push(@projects, $proj -> [0]);
+        }
+
+        push(@databases, { "id"   => $data -> {"id"},
+                           "name" => $data -> {"dbname"},
+                           "project" => \@projects });
+    }
+
+    return \@databases;
+}
+
+
+## @method $ set_user_database_project($username, $database, $project)
+# Associate a database with a project directory.
+#
+# @param username The name of the user to set the database for.
+# @param database The name of the database to set.
+# @param project  The name of the project directory (NOT the full path!)
+# @return true on success, undef on error
+sub set_user_database_project {
+    my $self     = shift;
+    my $username = shift;
+    my $database = shift;
+    my $project  = shift;
+
+    $self -> clear_error();
+
+    my $user = $self -> {"session"} -> get_user($username, 1)
+        or return $self -> self_error("Unable to get details for user '$username': ".$self -> {"session"} -> errstr());
+
+    my $dbid = $self -> _get_user_database_id($username, $database)
+        or return undef;
+
+    # Does a relation already exist for this database and project?
+    my $checkh = $self -> {"dbh"} -> prepare("SELECT `id`
+                                              FROM `".$self -> {"settings"} -> {"database"} -> {"userprojdbs"}."`
+                                              WHERE `database_id` = ?
+                                              AND `user_id` = ?
+                                              AND `project` LIKE ?");
+    $checkh -> execute($dbid, $user -> {"id"}, $project)
+        or return $self -> self_error("Unable to check whether project relation exists: ".$self -> {"dbh"} -> errstr);
+
+    # If the row exists, nothing to do here...
+    my $exists = $checkh -> fetchrow_arrayref();
+    return 1 if($exists && $exists -> [0]);
+
+    # doesn't exist, so make it so...
+    my $newh = $self -> {"dbh"} -> prepare("INSERT INTO `".$self -> {"settings"} -> {"database"} -> {"userprojdbs"}."`
+                                            (`database_id`, `user_id`, `project`)
+                                            VALUES(?, ?, ?)");
+    my $result = $newh -> execute($dbid, $user -> {"id"}, $project);
+    return $self -> self_error("Unable to execute database-project relation insert: ".$self -> {"dbh"} -> errstr) if(!$result);
+    return $self -> self_error("Database-project relation creation failed: no rows added") if($result eq "0E0");
+
+    return 1;
+}
+
+
+## @method $ get_user_database($username, $project)
+# Fetch the database set for the specified project directory for the user.
+# This looks up the database associated withteh specified project for the
+# user, and returns the name if found. If no database has been associated
+# with the project - or the project is not set - this returns the user's
+# primary database name (the oen with their username).
+#
+# @param username The user to fetch the database name for.
+# @param project  The project directory to filter the lookup by. If not
+#                 set, this function returns the user's primary database.
+# @return the database name to use for the user on success, undef on error.
+sub get_user_database {
+    my $self     = shift;
+    my $username = shift;
+    my $project  = shift;
+
+    $self -> clear_error();
+
+    my $user = $self -> {"session"} -> get_user($username, 1)
+        or return $self -> self_error("Unable to get details for user '$username': ".$self -> {"session"} -> errstr());
+
+    # If a project directory has been specified, look for it
+    if($project) {
+        my $dbnameh = $self -> {"dbh"} -> prepare("SELECT `db`.`dbname`
+                                                   FROM `".$self -> {"settings"} -> {"database"} -> {"userdatabases"}."` AS `db`,
+                                                        `".$self -> {"settings"} -> {"database"} -> {"userprojdbs"}."` AS `prj`
+                                                   WHERE `prj`.`database_id` = `db`.`id`
+                                                   AND `db`.`user_id` = ?
+                                                   AND `prj`.`project` LIKE ?
+                                                   ORDER BY `dbname`
+                                                   LIMIT 1");
+        $dbnameh -> execute($user -> {"id"}, $project)
+            or return $self -> self_error("Unable to look up user database name: ".$self -> {"dbh"} -> errstr);
+
+        # found a row? If so, return it
+        my $dbname = $dbnameh -> fetchrow_arrayref();
+        return $dbname -> [0] if($dbname);
+    }
+
+    # Use the default user database otherwise.
+    return $username;
 }
 
 
@@ -841,6 +1075,36 @@ sub _revoke_all {
         or return $self -> self_error("Unable to revoke access to $dbname from $username: ".$dbh -> errstr);
 
     return 1;
+}
+
+
+## @method private $ _get_user_database_id($username, $database)
+# Given a username and database name, locate the ID of the row that
+# associates the database with the user.
+#
+# @param username The name of the user that owns the database
+# @param database The name of the database to fetch the Id for.
+# @return The database row Id on success, undef on error.
+sub _get_user_database_id {
+    my $self = shift;
+    my $username = shift;
+    my $database = shift;
+
+    $self -> clear_error();
+
+    my $user = $self -> {"session"} -> get_user($username, 1)
+        or return $self -> self_error("Unable to get details for user '$username': ".$self -> {"session"} -> errstr());
+
+    my $dbidh = $self -> {"dbh"} -> prepare("SELECT `id`
+                                             FROM `".$self -> {"settings"} -> {"database"} -> {"userdatabases"}."`
+                                             WHERE `user_id` = ?
+                                             AND `database` LIKE ?");
+    $dbidh -> execute($user -> {"id"}, $database)
+        or return $self -> self_error("Unable to look up user database: ".$self -> {"dbh"} -> errstr);
+
+    my $dbid = $dbidh -> fetchrow_arrayref();
+
+    return $dbid ? $dbid -> [0] : $self -> self_error("Unable to find database '$database' for user '$username'");
 }
 
 1;

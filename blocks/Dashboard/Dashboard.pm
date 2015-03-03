@@ -27,6 +27,24 @@ use Webperl::Utils qw(path_join);
 use Data::Dumper;
 
 # ============================================================================
+#  Support
+
+sub _build_extra_databases {
+    my $self     = shift;
+    my $username = shift;
+
+    my $userdbs = $self -> {"system"} -> {"databases"} -> get_user_databases($username);
+    my @options = ( { "name"  => $self -> {"template"} -> replace_langvar("WEBSITE_DEFDB"),
+                      "value" => "$username" } );
+
+    foreach my $database (@{$userdbs}) {
+        push(@options, { "name" => $database -> {"name"}, "value" => $database -> {"name"} });
+    }
+
+    return \@options;
+}
+
+# ============================================================================
 #  Repository/web related
 
 ## @method private @ _validate_repository_id()
@@ -382,9 +400,19 @@ sub _generate_web_publish {
     my $hasroot = 0;
     my @options = ({"value" => "-",
                     "name"  => $self -> {"template"} -> replace_langvar("WEBSITE_PRIMINDEX")});
+    my $databases = $self -> _build_extra_databases($user -> {"username"});
     foreach my $entry (@{$repos}) {
+        my $extradbs = "";
+        if($self -> check_permission('extended.databases')) {
+            my $database = $user -> {"username"};
+
+            $extradbs = $self -> {"template"} -> load_template("dashboard/web/repo-extrarow.tem", {"***id***"        => $entry -> {"subdir"} || "-",
+                                                                                                   "***databases***" => $self -> {"template"} -> build_optionlist($databases, $database)});
+        }
+
         $rlist .= $self -> {"template"} -> load_template("dashboard/web/repo-row.tem", {"***url***"     => path_join($self -> {"settings"} -> {"git"} -> {"webbaseurl"}, lc($user -> {"username"}), $entry -> {"subdir"},"/"),
                                                                                         "***subdir***"  => path_join($self -> {"settings"} -> {"git"} -> {"webbaseurl"}, lc($user -> {"username"}), $entry -> {"subdir"},"/"),
+                                                                                        "***extradb***" => $extradbs,
                                                                                         "***id***"      => $entry -> {"subdir"} || "-",
                                                                                         "***source***"  => $entry -> {"origin"} });
         $hasroot = 1 if(!$entry -> {"subdir"});
@@ -403,7 +431,11 @@ sub _generate_web_publish {
                                                            "***web-path***"  => $args -> {"web-path"},
                                                            "***form_url***"  => $self -> build_url(block => "manage", "pathinfo" => [ "addrepos" ])});
 
-    return $self -> {"template"} -> load_template("dashboard/web/repo.tem"  , {"***repos***"     => $rlist,
+    my $extradbs = $self -> {"template"} -> load_template("dashboard/web/repo-extrahead.tem")
+        if($self -> check_permission('extended.databases'));
+
+    return $self -> {"template"} -> load_template("dashboard/web/repo.tem"  , {"***extradbs***"  => $extradbs,
+                                                                               "***repos***"     => $rlist,
                                                                                "***addform***"   => $addform,
                                                                                "***primary***"   => $primary,
                                                                                "***docs***"      => $self -> get_documentation_url("web"),
@@ -416,7 +448,7 @@ sub _generate_web_publish {
 }
 
 
-## @method provate $ _generate_group_database($groups)
+## @method private $ _generate_group_database($groups)
 # Generate a block containing the group database information for the user.
 #
 # @param groups A reference to a hash of group database information hashes.
@@ -438,6 +470,19 @@ sub _generate_group_database {
         if($groupstr);
 
     return $self -> {"template"} -> load_template("dashboard/db/nogroups.tem");
+}
+
+
+sub _generate_extra_databases {
+    my $self = shift;
+    my $user = shift;
+
+    if($self -> check_permission('extended.databases')) {
+        return $self -> {"template"} -> load_template("dashboard/db/extradbs.tem", {"***extradbs***" => "",
+                                                                                    "***otherdbs***" => "" });
+    }
+
+    return "";
 }
 
 
@@ -481,6 +526,7 @@ sub _generate_database {
                                                                                 "***password***" => "{L_DATABASE_PASSWORD_COPOUT}",
                                                                                 "***docs***"     => $self -> get_documentation_url("db"),
                                                                                 "***groups***"   => $self -> _generate_group_database($groupdbs),
+                                                                                "***extradbs***" => $self -> _generate_extra_databases($user),
                                                       });
     }
 }

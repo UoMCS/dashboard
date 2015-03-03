@@ -60,7 +60,8 @@ sub init {
     # now create the Dashboard-specific objects
     $self -> {"databases"} = Dashboard::System::Databases -> new(dbh      => $self -> {"dbh"},
                                                                  settings => $self -> {"settings"},
-                                                                 logger   => $self -> {"logger"})
+                                                                 logger   => $self -> {"logger"},
+                                                                 session  => $self -> {"session"})
         or return $self -> self_error("Databases init failed: ".$Webperl::SystemModule::errstr);
 
     $self -> {"repostools"} = Dashboard::System::ReposTools -> new(dbh      => $self -> {"dbh"},
