@@ -49,9 +49,7 @@ sub _build_extra_databases {
     my $username = shift;
 
     my $userdbs = $self -> {"system"} -> {"databases"} -> get_user_databases($username);
-    my @options = ( { "name"  => $self -> {"template"} -> replace_langvar("WEBSITE_DEFDB"),
-                      "value" => "-" } );
-
+    my @options = ( );
     foreach my $database (@{$userdbs}) {
         push(@options, { "name" => $database -> {"name"}, "value" => $database -> {"name"} });
     }

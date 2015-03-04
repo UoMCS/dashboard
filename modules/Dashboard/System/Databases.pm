@@ -1130,7 +1130,7 @@ sub _get_user_database_id {
     my $dbidh = $self -> {"dbh"} -> prepare("SELECT `id`
                                              FROM `".$self -> {"settings"} -> {"database"} -> {"userdatabases"}."`
                                              WHERE `user_id` = ?
-                                             AND `database` LIKE ?");
+                                             AND `dbname` LIKE ?");
     $dbidh -> execute($user -> {"user_id"}, $database)
         or return $self -> self_error("Unable to look up user database: ".$self -> {"dbh"} -> errstr);
 
