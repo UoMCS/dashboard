@@ -515,6 +515,44 @@ function set_primary_project(projfield, spinner)
 }
 
 
+function enable_extradb_form()
+{
+    $('createdb').addEvent('click', function() { add_extra_database(); });
+}
+
+
+function add_extra_database()
+{
+     var req = new Request({ url: api_request_path("dashboard", "adddb"),
+                            method: 'post',
+                            onRequest: function() {
+                                $('createdb').set('disabled', true);
+                                $('createdb').addClass('disabled');
+                            },
+                            onSuccess: function(respText, respXML) {
+                                $('createdb').set('disabled', false);
+                                $('createdb').removeClass('disabled');
+                                var err = respXML.getElementsByTagName("error")[0];
+
+                                if(err) {
+                                    $('errboxmsg').set('html', '<p class="error">'+err.getAttribute('info')+'</p>');
+                                    errbox.open();
+                                } else {
+                                    var res = respXML.getElementsByTagName("return")[0];
+                                    var rup = res.getAttribute("url");
+
+                                    if(rup)
+                                        location.href = rup;
+                                }
+                            }
+                           });
+    var name   = $('extradb-name').get('value');
+    var source = $('extradb-source').getSelected()[0].get('value');
+    req.post({extraname: name,
+              extrasrc: source});
+}
+
+
 window.addEvent('domready', function()
 {
     if($('web-repos'))
@@ -539,6 +577,10 @@ window.addEvent('domready', function()
     });
 
     enable_database_controls();
+
+    if($('extradbs')) {
+        enable_extradb_form();
+    }
 
     $$('a.rel').each(function(element) {
                          element.addEvent('click',

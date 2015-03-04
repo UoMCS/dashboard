@@ -29,13 +29,28 @@ use Data::Dumper;
 # ============================================================================
 #  Support
 
+sub _build_source_options {
+    my $self = shift;
+    my $user = shift;
+
+    my $databases = $self -> {"system"} -> {"databases"} -> get_database_server_databases($user -> {"username"});
+
+    my @options = ( { "name" => $self -> {"template"} -> replace_langvar("DATABASE_EXTRA_NONE"),
+                      "value" => "" });
+    foreach my $db (@{$databases}) {
+        push(@options, { "name" => $db, "value" => $db });
+    }
+
+    return \@options;
+}
+
 sub _build_extra_databases {
     my $self     = shift;
     my $username = shift;
 
     my $userdbs = $self -> {"system"} -> {"databases"} -> get_user_databases($username);
     my @options = ( { "name"  => $self -> {"template"} -> replace_langvar("WEBSITE_DEFDB"),
-                      "value" => "$username" } );
+                      "value" => "-" } );
 
     foreach my $database (@{$userdbs}) {
         push(@options, { "name" => $database -> {"name"}, "value" => $database -> {"name"} });
@@ -404,7 +419,7 @@ sub _generate_web_publish {
     foreach my $entry (@{$repos}) {
         my $extradbs = "";
         if($self -> check_permission('extended.databases')) {
-            my $database = $user -> {"username"};
+            my $database = $self -> {"system"} -> {"databases"} -> get_user_database($user -> {"username"}, $entry -> {"subdir"});
 
             $extradbs = $self -> {"template"} -> load_template("dashboard/web/repo-extrarow.tem", {"***id***"        => $entry -> {"subdir"} || "-",
                                                                                                    "***databases***" => $self -> {"template"} -> build_optionlist($databases, $database)});
@@ -478,8 +493,20 @@ sub _generate_extra_databases {
     my $user = shift;
 
     if($self -> check_permission('extended.databases')) {
-        return $self -> {"template"} -> load_template("dashboard/db/extradbs.tem", {"***extradbs***" => "",
-                                                                                    "***otherdbs***" => "" });
+        my $options = $self -> _build_source_options($user);
+        my $databases = $self -> {"system"} -> {"databases"} -> get_user_databases($user -> {"username"});
+
+        my $extradbs = "";
+        foreach my $database (@{$databases}) {
+            next if($database -> {"name"} eq $user -> {"username"}); # skip the user's default database
+
+            $extradbs .= $self -> {"template"} -> load_template("dashboard/db/db-row.tem", {"***database***" => $database -> {"name"},
+                                                                                            "***source***"   => $database -> {"source"},
+                                                                                            "***id***"       => $database -> {"id"}});
+        }
+
+        return $self -> {"template"} -> load_template("dashboard/db/extradbs.tem", {"***extradbs***" => $extradbs,
+                                                                                    "***otherdbs***" => $self -> {"template"} -> build_optionlist($options) });
     }
 
     return "";
@@ -761,13 +788,13 @@ sub _require_database_change_confirm {
 }
 
 
-## @method private $ _change_database()
+## @method private $ _change_database_password()
 # Update the password associated with the user's account in the database.
 #
 # @return A hash containing an API response. If the change succeeded, the response
 #         contains the URL to refirect the user to, otherwise it is an error to send
 #         to the user.
-sub _change_database {
+sub _change_database_password {
     my $self = shift;
 
     $self -> log("database", "Changing password for user.");
@@ -782,7 +809,7 @@ sub _change_database {
 
 # @method private $ _require_database_delete_confirm()
 # An API function that generates a confirmation request to show to the user
-# tbefore deleting their account and database.
+# before deleting their account and database(s).
 #
 # @return A string containing a block of HTML to return to the user.
 sub _require_database_delete_confirm {
@@ -794,13 +821,13 @@ sub _require_database_delete_confirm {
 }
 
 
-## @method private $ _delete_database()
-# Delete the user's database.
+## @method private $ _delete_database_account()
+# Delete the user's database account (and all databases they own).
 #
 # @return A hash containing an API response. If the delete succeeded, the response
 #         contains the URL to refirect the user to, otherwise it is an error to send
 #         to the user.
-sub _delete_database {
+sub _delete_database_account {
     my $self = shift;
     my $user = $self -> {"session"} -> get_user_byid();
 
@@ -814,6 +841,57 @@ sub _delete_database {
         or return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"system"} -> {"git"} -> errstr()}));
 
     return { "return" => { "url" => $self -> build_url(fullurl => 1, block => "manage", pathinfo => ["dbdel"], api => []) }};
+}
+
+
+## @method private $ _add_database()
+# Create a new database for the user.
+#
+# @return A reference to a hash containing the API response to sent back to the user.
+sub _add_database {
+    my $self = shift;
+
+    # Users are not allowed to add databases without the extended.databases capability
+    return $self -> api_errorhash("permission_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => "{L_DATABASE_APIERR_NOPERM}"}))
+        unless($self -> check_permission('extended.databases'));
+
+    # Get the current user's information
+    my $user  = $self -> {"session"} -> get_user_byid();
+    $user -> {"username"} = lc($user -> {"username"});
+
+    # mysql max database name length is 64 characters, so work out the maximum the user can set
+    my $namelen = 64 - (length($user -> {"username"}) + 1);
+
+    # User has permission, have they set the required variables?
+    my ($name, $nameerr) = $self -> validate_string("extraname", {"required"   => 1,
+                                                                  "nicename"   => $self -> {"template"} -> replace_langvar("DATABASE_EXTRA_NAME"),
+                                                                  "minlen"     => 3,
+                                                                  "maxlen"     => $namelen,
+                                                                  "formattest" => '^[-.+\w]+$',
+                                                                  "formatdesc" => $self -> {"template"} -> replace_langvar("DATABASE_APIERR_NAMEFORM"),
+                                                    });
+    return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $nameerr }))
+        if($nameerr);
+
+    # Check the source
+    my $databases = $self -> _build_source_options($user);
+    my ($source, $srcerr) = $self -> validate_options("extrasrc", {"required" => 0,
+                                                                   "nicename" => $self -> {"template"} -> replace_langvar("DATABASE_EXTRA_SOURCE"),
+                                                                   "source"   => $databases});
+    return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $srcerr }))
+        if($srcerr);
+
+    my $dbname = $user -> {"username"}."_".$name;
+
+    # Source and name are valid, create the database accordingly
+    $self -> {"system"} -> {"databases"} -> create_user_database($user -> {"username"}, $dbname)
+        or return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"system"} -> {"databases"} -> errstr() }));
+
+    if($source ne "-") {
+        # TODO: Handle cloning!
+    }
+
+    return { "return" => { "url" => $self -> build_url(fullurl => 1, block => "manage", pathinfo => ["dbadd"], api => []) }};
 }
 
 
@@ -850,8 +928,12 @@ sub page_display {
             when ("dbnukecheck")  { return $self -> api_html_response($self -> _require_database_delete_confirm()); }
             when ("dbsetcheck")   { return $self -> api_html_response($self -> _require_database_change_confirm()); }
 
-            when ("dodbchange")   { return $self -> api_response($self -> _change_database()); }
-            when ("dodbnuke")     { return $self -> api_response($self -> _delete_database()); }
+            when ("dodbchange")   { return $self -> api_response($self -> _change_database_password()); }
+            when ("dodbnuke")     { return $self -> api_response($self -> _delete_database_account()); }
+
+            # Additional database operations
+            when ("adddb")        { return $self -> api_response($self -> _add_database()); }
+
             default {
                 return $self -> api_html_response($self -> api_errorhash('bad_op',
                                                                          $self -> {"template"} -> replace_langvar("API_BAD_OP")))

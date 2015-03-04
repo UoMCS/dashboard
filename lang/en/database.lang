@@ -33,3 +33,7 @@ DATABASE_EXTRA_NAME      = Name
 DATABASE_EXTRA_SOURCE    = Source
 DATABASE_EXTRA_CREATE    = Create
 DATABASE_EXTRA_CLONE     = Clone from:
+DATABASE_EXTRA_NONE      = - (create empty db)
+
+DATABASE_APIERR_NOPERM   = You do not have permission to perform this operation.
+DATABASE_APIERR_NAMEFORM = Database names may only contain alphanumeric characters and underscores.

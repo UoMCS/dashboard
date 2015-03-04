@@ -117,6 +117,37 @@ sub get_user_database_server {
 }
 
 
+## @method $ get_database_server_databases($username)
+# Fetch the list of all databases on the server the user's account is on.
+#
+# @param username The name of the user to fetch the database list for.
+# @return A reference to an array of names of databases on the server
+#         the user's account is on, or undef on error.
+sub get_database_server_databases {
+    my $self     = shift;
+    my $username = shift;
+
+    $self -> clear_error();
+
+    my ($dbh) = $self -> get_user_database_server($username);
+
+    my @databases = ();
+
+    # Fetch the list of databases, excluding system ones
+    my $datah = $dbh -> prepare("SHOW DATABASES");
+    $datah -> execute()
+        or return $self -> self_error("Unable to fetch system databases: ".$dbh -> errstr);
+
+    while(my $db = $datah -> fetchrow_arrayref()) {
+        next if($db -> [0] eq "mysql" || $db -> [0] eq "information_schema");
+
+        push(@databases, $db -> [0]);
+    }
+
+    return \@databases;
+}
+
+
 ## @method $ user_database_exists($username)
 # Determine whether a database exists in the system for for the
 # specified user.
@@ -413,7 +444,7 @@ sub delete_user_database {
 
     $self -> clear_error();
 
-    $self -> _delete_database($username, $database -> {"name"})
+    $self -> _delete_database($username, $dbname)
         or return undef;
 
     my $user = $self -> {"session"} -> get_user($username, 1)
@@ -427,7 +458,7 @@ sub delete_user_database {
     my $nukeh = $self -> {"dbh"} -> prepare("DELETE FROM `".$self -> {"settings"} -> {"database"} -> {"userdatabases"}."`
                                              WHERE `user_id` = ?
                                              AND `dbname` LIKE ?");
-    $nukeh -> execute($user -> {"id"}, $dbname)
+    $nukeh -> execute($user -> {"user_id"}, $dbname)
         or return $self -> self_error("Unable to delete user database row: ".$self -> {"dbh"} -> errstr());
 
     # and any project mappings that reference it
@@ -468,21 +499,22 @@ sub get_user_databases {
                                                WHERE `user_id` = ?
                                                AND `database_id` = ?");
 
-    $dbdatah -> execute($user -> {"id"})
+    $dbdatah -> execute($user -> {"user_id"})
         or return $self -> self_error("Unable to execute user database lookup: ".$self -> {"dbh"} -> errstr());
 
     my @databases = ();
     while(my $data = $dbdatah -> fetchrow_hashref()) {
-        $dbprojh -> execute($user -> {"id"}, $data -> {"id"})
-            or return $self -> self_error("Unable to look up upser project database information: ".$self -> {"dbh"} -> errstr);
+        $dbprojh -> execute($user -> {"use_id"}, $data -> {"id"})
+            or return $self -> self_error("Unable to look up user project database information: ".$self -> {"dbh"} -> errstr);
 
         my @projects = ();
         while(my $proj = $dbprojh -> fetchrow_arrayref()) {
             push(@projects, $proj -> [0]);
         }
 
-        push(@databases, { "id"   => $data -> {"id"},
-                           "name" => $data -> {"dbname"},
+        push(@databases, { "id"      => $data -> {"id"},
+                           "name"    => $data -> {"dbname"},
+                           "source"  => $data -> {"source"},
                            "project" => \@projects });
     }
 
@@ -517,7 +549,7 @@ sub set_user_database_project {
                                               WHERE `database_id` = ?
                                               AND `user_id` = ?
                                               AND `project` LIKE ?");
-    $checkh -> execute($dbid, $user -> {"id"}, $project)
+    $checkh -> execute($dbid, $user -> {"user_id"}, $project)
         or return $self -> self_error("Unable to check whether project relation exists: ".$self -> {"dbh"} -> errstr);
 
     # If the row exists, nothing to do here...
@@ -528,7 +560,7 @@ sub set_user_database_project {
     my $newh = $self -> {"dbh"} -> prepare("INSERT INTO `".$self -> {"settings"} -> {"database"} -> {"userprojdbs"}."`
                                             (`database_id`, `user_id`, `project`)
                                             VALUES(?, ?, ?)");
-    my $result = $newh -> execute($dbid, $user -> {"id"}, $project);
+    my $result = $newh -> execute($dbid, $user -> {"user_id"}, $project);
     return $self -> self_error("Unable to execute database-project relation insert: ".$self -> {"dbh"} -> errstr) if(!$result);
     return $self -> self_error("Database-project relation creation failed: no rows added") if($result eq "0E0");
 
@@ -567,7 +599,7 @@ sub get_user_database {
                                                    AND `prj`.`project` LIKE ?
                                                    ORDER BY `dbname`
                                                    LIMIT 1");
-        $dbnameh -> execute($user -> {"id"}, $project)
+        $dbnameh -> execute($user -> {"user_id"}, $project)
             or return $self -> self_error("Unable to look up user database name: ".$self -> {"dbh"} -> errstr);
 
         # found a row? If so, return it
@@ -1099,7 +1131,7 @@ sub _get_user_database_id {
                                              FROM `".$self -> {"settings"} -> {"database"} -> {"userdatabases"}."`
                                              WHERE `user_id` = ?
                                              AND `database` LIKE ?");
-    $dbidh -> execute($user -> {"id"}, $database)
+    $dbidh -> execute($user -> {"user_id"}, $database)
         or return $self -> self_error("Unable to look up user database: ".$self -> {"dbh"} -> errstr);
 
     my $dbid = $dbidh -> fetchrow_arrayref();
