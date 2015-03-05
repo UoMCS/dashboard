@@ -498,9 +498,13 @@ sub _generate_extra_databases {
         foreach my $database (@{$databases}) {
             next if($database -> {"name"} eq $user -> {"username"}); # skip the user's default database
 
+            my $reclone = $self -> {"template"} -> load_template("dashboard/db/db-row-reclone.tem")
+                if($database -> {"source"});
+
             $extradbs .= $self -> {"template"} -> load_template("dashboard/db/db-row.tem", {"***database***" => $database -> {"name"},
                                                                                             "***source***"   => $database -> {"source"},
-                                                                                            "***id***"       => $database -> {"id"}});
+                                                                                            "***id***"       => $database -> {"id"},
+                                                                                            "***reclone***"  => $reclone});
         }
 
         return $self -> {"template"} -> load_template("dashboard/db/extradbs.tem", {"***extradbs***" => $extradbs,
@@ -893,6 +897,60 @@ sub _add_database {
 }
 
 
+sub _set_project_database {
+    my $self = shift;
+
+    # Users are not allowed to set databases without the extended.databases capability
+    return $self -> api_errorhash("permission_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => "{L_DATABASE_APIERR_NOPERM}"}))
+        unless($self -> check_permission('extended.databases'));
+
+    # Get the current user's information
+    my $user  = $self -> {"session"} -> get_user_byid();
+
+    $self -> log("web", "Setting project database for user ".$user -> {"username"});
+
+    # Get the project and database information
+    # first the list of valid repositories
+    my $repos = $self -> {"system"} -> {"git"} -> user_web_repo_list($user -> {"username"});
+    my @valid_repo_options = ();
+    foreach my $proj (@{$repos}) {
+        push(@valid_repo_options, { "name"  => $proj -> {"subdir"},
+                                    "value" => $proj -> {"subdir"} });
+    }
+
+    # and now the list of valid databases
+    my $userdbs = $self -> {"system"} -> {"databases"} -> get_user_databases($user -> {"username"});
+    my @valid_db_options = ( );
+    foreach my $database (@{$userdbs}) {
+        push(@valid_db_options, { "name" => $database -> {"name"}, "value" => $database -> {"name"} });
+    }
+
+    # And pull in the validated info
+    my ($project, $projerr) = $self -> validate_options("project", {"required" => 1,
+                                                                    "nicename" => $self -> {"template"} -> replace_langvar("WEBSITE_PROJECT"),
+                                                                    "source"   => \@valid_repo_options});
+    return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $projerr }))
+        if($projerr);
+
+     my ($dbname, $dberr) = $self -> validate_options("dbname", {"required" => 1,
+                                                                 "nicename" => $self -> {"template"} -> replace_langvar("WEBSITE_DATABASE"),
+                                                                 "source"   => \@valid_db_options});
+    return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $dberr }))
+        if($dberr);
+
+    $self -> log("web", "Setting database $dbname for project $project for user ".$user -> {"username"});
+
+    # Got a project and database, set it
+    $self -> {"system"} -> {"databases"} -> set_user_database_project($user -> {"username"}, $dbname, $project)
+        or return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"system"} -> {"databases"} -> errstr() }));
+
+    $self -> {"system"} -> {"git"} -> write_config($user -> {"username"})
+        or return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"system"} -> {"git"} -> errstr() }));
+
+    return { "result" => { "status" => "ok" } };
+}
+
+
 # ============================================================================
 #  Interface functions
 
@@ -931,6 +989,7 @@ sub page_display {
 
             # Additional database operations
             when ("adddb")        { return $self -> api_response($self -> _add_database()); }
+            when ("setprojdb")    { return $self -> api_response($self -> _set_project_database()); }
 
             default {
                 return $self -> api_html_response($self -> api_errorhash('bad_op',

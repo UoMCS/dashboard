@@ -1,1 +1,1 @@
-<td><select name="extradb" id="extradb-***id***">***databases***</select></td>
+<td><select class="projdb" name="extradb" id="extradb-***id***">***databases***</select></td>

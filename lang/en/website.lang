@@ -21,6 +21,7 @@ WEBSITE_ERR_GOTROOT  = Unable to set a primary website: you have a project in th
 
 WEBSITE_GOTREPOS   = This is a list of your currently published websites. You can manage them using the options in the 'controls' column for each website.
 WEBSITE_PUBLISH    = Publish project
+WEBSITE_PROJECT    = Project
 WEBSITE_LOCATION   = Loction
 WEBSITE_SOURCE     = Git project
 WEBSITE_DATABASE   = Database

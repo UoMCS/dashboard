@@ -37,3 +37,6 @@ DATABASE_EXTRA_NONE      = - (create empty db)
 
 DATABASE_APIERR_NOPERM   = You do not have permission to perform this operation.
 DATABASE_APIERR_NAMEFORM = Database names may only contain alphanumeric characters and underscores.
+
+DATABASE_EXTRA_DELETE    = Delete
+DATABASE_EXTRA_RECLONE   = Re-clone

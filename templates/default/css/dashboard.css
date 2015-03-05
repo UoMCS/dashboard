@@ -160,3 +160,27 @@ table.extradbs tr td.controls {
     width: 128px;
     padding: 0px;
 }
+
+.control.upddb {
+    background-position: 0px 0px;
+}
+
+.control.upddb.disabled, .control.upddb.disabled:hover {
+    background-position: 0px -16px;
+}
+
+.control.upddb:hover {
+    background-position: 0px -32px;
+}
+
+.control.deldb {
+    background-position: -32px 0px;
+}
+
+.control.deldb.disabled, .control.deldb.disabled:hover {
+    background-position: -32px -16px;
+}
+
+.control.deldb:hover {
+    background-position: -32px -32px;
+}

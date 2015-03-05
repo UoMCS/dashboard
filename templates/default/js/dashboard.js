@@ -518,6 +518,9 @@ function set_primary_project(projfield, spinner)
 function enable_extradb_form()
 {
     $('createdb').addEvent('click', function() { add_extra_database(); });
+
+    $$('select.projdb').each(function(element) { element.addEvent('change', function(event) { set_project_database(event.target); })
+                                               });
 }
 
 
@@ -552,6 +555,34 @@ function add_extra_database()
               extrasrc: source});
 }
 
+
+function set_project_database(element)
+{
+    var pathid = element.get('id').substr(8);
+
+    var req = new Request({ url: api_request_path("dashboard", "setprojdb"),
+                            method: 'post',
+                            onRequest: function() {
+                                element.set('disabled', true);
+                                $('workspinner-'+pathid).fade('in');
+                                disable_repos_controls(pathid);
+                            },
+                            onSuccess: function(respText, respXML) {
+                                element.set('disabled', false);
+                                $('workspinner-'+pathid).fade('out');
+                                enable_repos_controls(pathid);
+                                var err = respXML.getElementsByTagName("error")[0];
+
+                                if(err) {
+                                    $('errboxmsg').set('html', '<p class="error">'+err.getAttribute('info')+'</p>');
+                                    errbox.open();
+                                }
+                            }
+                          });
+    var dbname = element.getSelected()[0].get('value');
+    req.post({project: pathid,
+              dbname: dbname});
+}
 
 window.addEvent('domready', function()
 {

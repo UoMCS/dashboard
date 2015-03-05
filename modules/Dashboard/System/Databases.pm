@@ -139,7 +139,7 @@ sub get_database_server_databases {
         or return $self -> self_error("Unable to fetch system databases: ".$dbh -> errstr);
 
     while(my $db = $datah -> fetchrow_arrayref()) {
-        next if($db -> [0] eq "mysql" || $db -> [0] eq "information_schema");
+        next if($db -> [0] eq "mysql" || $db -> [0] eq "information_schema" || $db -> [0] eq "performance_schema");
 
         push(@databases, $db -> [0]);
     }
@@ -559,7 +559,8 @@ sub set_user_database_project {
     # doesn't exist, so make it so...
     my $newh = $self -> {"dbh"} -> prepare("INSERT INTO `".$self -> {"settings"} -> {"database"} -> {"userprojdbs"}."`
                                             (`database_id`, `user_id`, `project`)
-                                            VALUES(?, ?, ?)");
+                                            VALUES(?, ?, ?)
+                                            ON DUPLICATE KEY UPDATE `database_id` = VALUES(`database_id`)");
     my $result = $newh -> execute($dbid, $user -> {"user_id"}, $project);
     return $self -> self_error("Unable to execute database-project relation insert: ".$self -> {"dbh"} -> errstr) if(!$result);
     return $self -> self_error("Database-project relation creation failed: no rows added") if($result eq "0E0");
@@ -681,6 +682,9 @@ sub get_user_group_databases {
     my ($dbh) = $self -> get_user_database_server($username)
         or return undef;
 
+    my $user = $self -> {"session"} -> get_user($username, 1)
+        or return $self -> self_error("Unable to get details for user '$username': ".$self -> {"session"} -> errstr());
+
     # We're interested in any databases the user has access to that do not have the same
     # name as the username (ie: not personal databases)
     my $grouph = $dbh -> prepare("SELECT Host,Db
@@ -690,9 +694,20 @@ sub get_user_group_databases {
     $grouph -> execute($username)
         or return $self -> self_error("Unable to execute database list lookup");
 
+    # And will need to skip databases listed as additional databases for the user.
+    my $checkh = $self -> {"dbh"} -> prepare("SELECT `id`
+                                              FROM `".$self -> {"settings"} -> {"database"} -> {"userdatabases"}."`
+                                              WHERE `user_id` = ?
+                                              AND `dbname` LIKE ?");
     my $grouphash = {};
     # convert the results to a has for faster lookups
     while(my $group = $grouph -> fetchrow_hashref()) {
+        $checkh -> execute($user -> {"user_id"}, $group -> {"Db"})
+            or return $self -> self_error("Unable to check whether ".$group -> {"Db"}." is an additional database for $username");
+        # skip additional databases.
+        my $isadd = $checkh -> fetchrow_arrayref();
+        next if($isadd && $isadd -> [0]);
+
         $grouphash -> {$group -> {"Db"}} -> {$group -> {"Host"}} -> {"access"} = 1;
     }
 
