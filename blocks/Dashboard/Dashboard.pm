@@ -29,11 +29,22 @@ use Data::Dumper;
 # ============================================================================
 #  Support
 
+## @method private $ _build_source_options($username)
+# Generate the list of databases available for cloning by the user. This will
+# produce an array of hashes suitable for passing to build_optionlist() or
+# validate_options(), each hash containing the name of a database the user
+# can use as a source for a new database. This will be a longer list than
+# the user can directly access - in theory, every non-system database on the
+# server will be listed!
+#
+# @param username The name of the user to fetch the source options for (this
+#                 may be used to select a database server to use)
+# @return A reference to an array of hashes containing name and value keys.
 sub _build_source_options {
-    my $self = shift;
-    my $user = shift;
+    my $self     = shift;
+    my $username = shift;
 
-    my $databases = $self -> {"system"} -> {"databases"} -> get_database_server_databases($user -> {"username"});
+    my $databases = $self -> {"system"} -> {"databases"} -> get_database_server_databases($username);
 
     my @options = ( { "name" => $self -> {"template"} -> replace_langvar("DATABASE_EXTRA_NONE"),
                       "value" => "" });
@@ -44,6 +55,13 @@ sub _build_source_options {
     return \@options;
 }
 
+## @method private $ _build_extra_databases($username)
+# Generate a list of databases the user has access to. This returns the *user's*
+# databases, rather than all databases on the server, in a form suitable to
+# pass to build_optionlist and validate_options.
+#
+# @param username The name of the user to fetch the databases for.
+# @return A reference to an array of hashes containing name and value keys.
 sub _build_extra_databases {
     my $self     = shift;
     my $username = shift;
@@ -259,13 +277,13 @@ sub _validate_change_repository {
                                                                  "formattest" => $self -> {"formats"} -> {"url"},
                                                                  "formatdesc" => $self -> {"template"} -> replace_langvar("WEBSITE_ERR_BADREPO"),
                                                                 });
-    return $error if($error);
+    return ($error, undef) if($error);
 
     # The respository appears to be valid, do the clone
     $self -> {"system"} -> {"git"} -> clone_repository($repos, $user -> {"username"}, $path)
         or return $self -> {"system"} -> {"git"} -> errstr();
 
-    return undef;
+    return (undef, $repos);
 }
 
 
@@ -491,7 +509,7 @@ sub _generate_extra_databases {
     my $user = shift;
 
     if($self -> check_permission('extended.databases')) {
-        my $options = $self -> _build_source_options($user);
+        my $options = $self -> _build_source_options($user -> {"username"});
         my $databases = $self -> {"system"} -> {"databases"} -> get_user_databases($user -> {"username"});
 
         my $extradbs = "";
@@ -739,11 +757,12 @@ sub _change_repository {
     return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $errors}))
         if($errors);
 
-    $errors = $self -> _validate_change_repository($path);
-    return $self -> api_errorhash("validation_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $errors}))
-        if($errors);
+    my ($reposerr, $repos) = $self -> _validate_change_repository($path);
+    return $self -> api_errorhash("validation_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $reposerr}))
+        if($reposerr);
 
-    return { "return" => { "url" => $self -> build_url(fullurl => 1, block => "manage", pathinfo => ["webset"], api => []) }};
+    return { "result" => { "status" => "ok",
+                           "repos"  => $repos } };
 }
 
 
@@ -876,7 +895,7 @@ sub _add_database {
         if($nameerr);
 
     # Check the source
-    my $databases = $self -> _build_source_options($user);
+    my $databases = $self -> _build_source_options($user -> {"username"});
     my ($source, $srcerr) = $self -> validate_options("extrasrc", {"required" => 0,
                                                                    "nicename" => $self -> {"template"} -> replace_langvar("DATABASE_EXTRA_SOURCE"),
                                                                    "source"   => $databases});
