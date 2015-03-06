@@ -1,6 +1,6 @@
-<tr>
+<tr id="site-***id***">
     <td><a href="***url***" class="rel">***subdir***</a></td>
-    <td>***source***</td>
+    <td id="source-***id***">***source***</td>
     ***extradb***
     <td class="controls">
         <ul class="controls website" id="ctrl-***id***">

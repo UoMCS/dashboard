@@ -213,12 +213,11 @@ function do_delete_repos(pathid)
                                     popbox.close();
                                     errbox.open();
                                 } else {
-                                    var res = respXML.getElementsByTagName("return")[0];
-                                    var rup = res.getAttribute("url");
-
-                                    if(rup)
-                                        location.href = rup;
+                                    $('site-'+pathid).fade('out').get('tween').chain(function() {
+                                        $('site-'+pathid).destroy().empty();
+                                    });
                                 }
+                                popbox.close();
                                 $('workspinner-'+pathid).fade('out');
                                 enable_repos_controls(pathid);
                                 updatelock = false;
@@ -294,12 +293,12 @@ function do_change_repos(pathid)
                                     popbox.close();
                                     errbox.open();
                                 } else {
-                                    var res = respXML.getElementsByTagName("return")[0];
-                                    var rup = res.getAttribute("url");
+                                    var res = respXML.getElementsByTagName("result")[0];
+                                    var repos = res.getAttribute("repos");
 
-                                    if(rup)
-                                        location.href = rup;
+                                    $('source-'+pathid).set('html', repos);
                                 }
+                                popbox.close();
                                 $('workspinner-'+pathid).fade('out');
                                 enable_repos_controls(pathid);
                                 updatelock = false;
