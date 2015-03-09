@@ -469,6 +469,11 @@ sub delete_user_database {
     $self -> _delete_database($username, $dbname)
         or return undef;
 
+    foreach my $host (@{$self -> {"allowed_hosts"}}) {
+        $self -> _revoke_all($username, $dbname, $host)
+            or return undef;
+    }
+
     return 1;
 }
 
@@ -1007,7 +1012,7 @@ sub _create_user_database {
 # Delete the specified database from the system. Use with caution.
 #
 # @param username The user the database is for.
-# @param name The name of the database to delete.
+# @param name     The name of the database to delete.
 # @return true if the database was deleted (or did not exist!), false otherwise
 sub _delete_database {
     my $self     = shift;
