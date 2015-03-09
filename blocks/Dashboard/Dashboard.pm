@@ -920,18 +920,27 @@ sub _add_database {
 
     my $dbname = $user -> {"username"}."_".$name;
 
+    $self -> log("database", "Creating database '$dbname' for user ".$user -> {"username"});
+
     # Source and name are valid, create the database accordingly
-    $self -> {"system"} -> {"databases"} -> create_user_database($user -> {"username"}, $dbname)
+    $self -> {"system"} -> {"databases"} -> create_user_database($user -> {"username"}, $dbname, $source ne "-" ? $source : undef)
         or return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"system"} -> {"databases"} -> errstr() }));
 
     if($source ne "-") {
-        # TODO: Handle cloning!
+        $self -> log("database", "Cloning database '$source' as '$dbname' for user ".$user -> {"username"});
+
+        $self -> {"system"} -> {"databases"} -> clone_database($user -> {"username"}, $source, $dbname)
+            or return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"system"} -> {"databases"} -> errstr() }));
     }
 
     return { "return" => { "url" => $self -> build_url(fullurl => 1, block => "manage", pathinfo => ["dbadd"], api => []) }};
 }
 
 
+## @method private $ _set_project_database()
+# Set the database associated with a project.
+#
+# @return A reference to a hash containing the API response to sent back to the user.
 sub _set_project_database {
     my $self = shift;
 
@@ -941,6 +950,7 @@ sub _set_project_database {
 
     # Get the current user's information
     my $user  = $self -> {"session"} -> get_user_byid();
+    $user -> {"username"} = lc($user -> {"username"});
 
     $self -> log("web", "Setting project database for user ".$user -> {"username"});
 
