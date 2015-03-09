@@ -889,7 +889,7 @@ sub _add_database {
     my $self = shift;
 
     # Users are not allowed to add databases without the extended.databases capability
-    return $self -> api_errorhash("permission_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => "{L_DATABASE_APIERR_NOPERM}"}))
+    return $self -> api_errorhash("permission_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"template"} -> replace_langvar("DATABASE_APIERR_NOPERM")}))
         unless($self -> check_permission('extended.databases'));
 
     # Get the current user's information
@@ -920,6 +920,12 @@ sub _add_database {
 
     my $dbname = $user -> {"username"}."_".$name;
 
+    # Ensure that the name is not already used
+    foreach my $database (@{$databases}) {
+        return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"template"} -> replace_langvar("DATABASE_APIERR_EXISTS") }))
+            if($dbname eq $database -> {"value"});
+    }
+
     $self -> log("database", "Creating database '$dbname' for user ".$user -> {"username"});
 
     # Source and name are valid, create the database accordingly
@@ -945,7 +951,7 @@ sub _set_project_database {
     my $self = shift;
 
     # Users are not allowed to set databases without the extended.databases capability
-    return $self -> api_errorhash("permission_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => "{L_DATABASE_APIERR_NOPERM}"}))
+    return $self -> api_errorhash("permission_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"template"} -> replace_langvar("DATABASE_APIERR_NOPERM")}))
         unless($self -> check_permission('extended.databases'));
 
     # Get the current user's information
@@ -1000,7 +1006,7 @@ sub _delete_database {
     my $self = shift;
 
     # Users are not allowed to delete databases without the extended.databases capability
-    return $self -> api_errorhash("permission_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => "{L_DATABASE_APIERR_NOPERM}"}))
+    return $self -> api_errorhash("permission_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"template"} -> replace_langvar("DATABASE_APIERR_NOPERM")}))
         unless($self -> check_permission('extended.databases'));
 
     # Get the current user's information
