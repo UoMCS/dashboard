@@ -214,7 +214,7 @@ function do_delete_repos(pathid)
                                     errbox.open();
                                 } else {
                                     $('site-'+pathid).fade('out').get('tween').chain(function() {
-                                        $('site-'+pathid).destroy().empty();
+                                        $('site-'+pathid).destroy();
                                     });
                                 }
                                 popbox.close();
@@ -518,8 +518,13 @@ function enable_extradb_form()
 {
     $('createdb').addEvent('click', function() { add_extra_database(); });
 
+    // Dropdowns to select which database to use for each project
     $$('select.projdb').each(function(element) { element.addEvent('change', function(event) { set_project_database(event.target); })
                                                });
+
+    // Delete buttons for extra databases
+    $$('div.control.deldb').each(function(element) { element.addEvent('click', function(event) { delete_extra_database(event.target); })
+                                                   });
 }
 
 
@@ -552,6 +557,48 @@ function add_extra_database()
     var source = $('extradb-source').getSelected()[0].get('value');
     req.post({extraname: name,
               extrasrc: source});
+}
+
+
+function delete_extra_database(element)
+{
+    var dbname = element.get('id').substr(9);
+    var req = new Request({ url: api_request_path("dashboard", "deldb"),
+                            method: 'post',
+                            onRequest: function() {
+                                $('workspinner-'+dbname).fade('in');
+                            },
+                            onSuccess: function(respText, respXML) {
+                                $('workspinner-'+dbname).fade('out');
+                                var err = respXML.getElementsByTagName("error")[0];
+
+                                if(err) {
+                                    $('errboxmsg').set('html', '<p class="error">'+err.getAttribute('info')+'</p>');
+                                    errbox.open();
+                                } else {
+                                    // remove the row in the table
+                                    $('extradb-'+dbname).fade('out').get('tween').chain(function() {
+                                        $('extradb-'+dbname).destroy();
+                                    });
+
+                                    // And the entry in the source dropdown
+                                    $$('select.sourcedb option[value="'+dbname+'"]').each(function(element) { element.remove(); });
+
+                                    // and any databases set for projects
+                                    $$('select.projdb option[value="'+dbname+'"]').each(function(element) {
+                                        var select = element.getParent();
+
+                                        // The first option is always the user's default database, which can not be deleted.
+                                        select.value = select.options[0].get('value');
+
+                                        element.remove();
+                                    });
+                                }
+
+                            }
+                          });
+
+    req.post({dbname: dbname});
 }
 
 

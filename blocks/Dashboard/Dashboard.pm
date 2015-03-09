@@ -423,7 +423,8 @@ sub _generate_web_publish {
     my $user = shift;
     my $args = shift;
 
-    # First up, does the user have an existing repository in place?
+    # Fetch the list of repositories the user has published, falling back on the
+    # default 'no repositories' content if they have none.
     my $repos = $self -> {"system"} -> {"git"} -> user_web_repo_list($user -> {"username"});
     return $self -> {"template"} -> load_template("dashboard/web/norepo.tem", {"***web-repos***" => $args -> {"web-repos"},
                                                                                "***web-path***"  => $args -> {"web-path"},
@@ -606,7 +607,6 @@ sub _generate_dashboard {
 
     # Get the current user's information
     my $user  = $self -> {"session"} -> get_user_byid();
-
     $user -> {"username"} = lc($user -> {"username"});
 
     # Build the web publish block
@@ -882,7 +882,7 @@ sub _delete_database_account {
 
 
 ## @method private $ _add_database()
-# Create a new database for the user.
+# Create a new database for the user, possibly cloning a database in the process.
 #
 # @return A reference to a hash containing the API response to sent back to the user.
 sub _add_database {
@@ -977,9 +977,9 @@ sub _set_project_database {
     return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $projerr }))
         if($projerr);
 
-     my ($dbname, $dberr) = $self -> validate_options("dbname", {"required" => 1,
-                                                                 "nicename" => $self -> {"template"} -> replace_langvar("WEBSITE_DATABASE"),
-                                                                 "source"   => \@valid_db_options});
+    my ($dbname, $dberr) = $self -> validate_options("dbname", {"required" => 1,
+                                                                "nicename" => $self -> {"template"} -> replace_langvar("WEBSITE_DATABASE"),
+                                                                "source"   => \@valid_db_options});
     return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $dberr }))
         if($dberr);
 
@@ -987,6 +987,47 @@ sub _set_project_database {
 
     # Got a project and database, set it
     $self -> {"system"} -> {"databases"} -> set_user_database_project($user -> {"username"}, $dbname, $project)
+        or return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"system"} -> {"databases"} -> errstr() }));
+
+    $self -> {"system"} -> {"git"} -> write_config($user -> {"username"})
+        or return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"system"} -> {"git"} -> errstr() }));
+
+    return { "result" => { "status" => "ok" } };
+}
+
+
+sub _delete_database {
+    my $self = shift;
+
+    # Users are not allowed to delete databases without the extended.databases capability
+    return $self -> api_errorhash("permission_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => "{L_DATABASE_APIERR_NOPERM}"}))
+        unless($self -> check_permission('extended.databases'));
+
+    # Get the current user's information
+    my $user  = $self -> {"session"} -> get_user_byid();
+    $user -> {"username"} = lc($user -> {"username"});
+
+    $self -> log("database", "Deleting database for user ".$user -> {"username"});
+
+    # Build the list of databases the user can delete
+    my $userdbs = $self -> {"system"} -> {"databases"} -> get_user_databases($user -> {"username"});
+    my @valid_db_options = ( );
+    foreach my $database (@{$userdbs}) {
+        # Can't delete the default database
+        next if($database -> {"name"} eq $user -> {"username"});
+
+        push(@valid_db_options, { "name" => $database -> {"name"}, "value" => $database -> {"name"} });
+    }
+
+    my ($dbname, $dberr) = $self -> validate_options("dbname", {"required" => 1,
+                                                                "nicename" => $self -> {"template"} -> replace_langvar("WEBSITE_DATABASE"),
+                                                                "source"   => \@valid_db_options});
+    return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $dberr }))
+        if($dberr);
+
+    $self -> log("database", "Deleting database '$dbname' for user ".$user -> {"username"});
+
+    $self -> {"system"} -> {"databases"} -> delete_user_database($user -> {"username"}, $dbname)
         or return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"system"} -> {"databases"} -> errstr() }));
 
     $self -> {"system"} -> {"git"} -> write_config($user -> {"username"})
@@ -1035,6 +1076,7 @@ sub page_display {
             # Additional database operations
             when ("adddb")        { return $self -> api_response($self -> _add_database()); }
             when ("setprojdb")    { return $self -> api_response($self -> _set_project_database()); }
+            when ("deldb")        { return $self -> api_response($self -> _delete_database()); }
 
             default {
                 return $self -> api_html_response($self -> api_errorhash('bad_op',
