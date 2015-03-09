@@ -246,18 +246,20 @@ sub create_user_account {
 }
 
 
-## @method $ create_user_database($username, $dbname)
+## @method $ create_user_database($username, $dbname, $source)
 # Create a database for the specified user and grant access to the user from
 # all allowed hosts. If the user's database already exists, this does nothing.
 #
 # @param username The name of the user to create the database for.
 # @param dbname   An optional database name. If not set, this defaults to
 #                 the username.
+# @param source   An optional source database name for cloned DBs.
 # @return true on success, undef on error.
 sub create_user_database {
     my $self     = shift;
     my $username = shift;
     my $dbname   = shift || $username;
+    my $source   = shift;
 
     $self -> clear_error();
 
@@ -269,7 +271,7 @@ sub create_user_database {
             or return undef;
     }
 
-    $self -> set_user_database($username, $dbname)
+    $self -> set_user_database($username, $dbname, undef, $source)
         or return undef;
 
     return 1;
@@ -397,7 +399,7 @@ sub get_user_password {
 #
 # @param username The name of the user the database belongs to.
 # @param dbname   The name of the database.
-# @param project  The project directory to associate the database with. If NULL,
+# @param project  The project directory to associate the database with. If undef,
 #                 it is the user's default global database.
 # @param source   If the database is a clone of another, this is the name of
 #                 the source database. undef if not a clone.
@@ -444,9 +446,6 @@ sub delete_user_database {
 
     $self -> clear_error();
 
-    $self -> _delete_database($username, $dbname)
-        or return undef;
-
     my $user = $self -> {"session"} -> get_user($username, 1)
         or return $self -> self_error("Unable to get details for user '$username': ".$self -> {"session"} -> errstr());
 
@@ -466,6 +465,9 @@ sub delete_user_database {
                                             WHERE `database_id` = ?");
     $maph -> execute($dbid)
         or return $self -> self_error("Unable to remove database-project mappings for $dbname:".$self -> {"dbh"} -> errstr());
+
+    $self -> _delete_database($username, $dbname)
+        or return undef;
 
     return 1;
 }
@@ -610,6 +612,28 @@ sub get_user_database {
 
     # Use the default user database otherwise.
     return $username;
+}
+
+
+##@method $ clone_database($username, $source, $dest)
+#
+sub clone_database {
+    my $self     = shift;
+    my $username = shift;
+    my $source   = shift;
+    my $dest     = shift;
+
+    $self -> clear_error();
+
+    my $copycmd = $self -> {"settings"} -> {"userdatabase"} -> {"clonedb"};
+    $copycmd =~ s/%s/$source/g;
+    $copycmd =~ s/%d/$dest/g;
+
+    my $result = `$copycmd`;
+    return $self -> self_error("Unable to clone database: $result")
+        if($result);
+
+    return 1;
 }
 
 
@@ -992,7 +1016,7 @@ sub _delete_database {
 
     $self -> clear_error();
 
-    $self -> log("database", "Deleting database $name");
+    $self -> log("database", "Deleting database '$name'");
 
     my ($dbh) = $self -> get_user_database_server($username)
         or return undef;

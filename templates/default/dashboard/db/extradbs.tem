@@ -7,4 +7,4 @@
 ***extradbs***
     </tbody>
 <table>
-<div class="newdb">{L_DATABASE_EXTRA_CLONE} <select id="extradb-source">***otherdbs***</select> {L_DATABASE_EXTRA_NAME}: <input id="extradb-name" type="text" size="24" maxlength="24" title="{L_DATABASE_EXTRA_NAME}" /><button id="createdb" class="button blue">{L_DATABASE_EXTRA_CREATE}</button></div>
+<div class="newdb">{L_DATABASE_EXTRA_CLONE} <select class="sourcedb" id="extradb-source">***otherdbs***</select> {L_DATABASE_EXTRA_NAME}: <input id="extradb-name" type="text" size="24" maxlength="24" title="{L_DATABASE_EXTRA_NAME}" /><button id="createdb" class="button blue">{L_DATABASE_EXTRA_CREATE}</button></div>
