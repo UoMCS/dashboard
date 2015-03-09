@@ -4,8 +4,8 @@
     <td class="controls">
         <ul class="controls database" id="ctrl-***id***">
             <li><img class="workspin" id="workspinner-***id***" src="{V_[templatepath]}images/spinner.gif" width="16" height="16" alt="working" /></li>
-***reclone***
             <li><div class="control deldb" id="deldbbtn-***id***" title="{L_DATABASE_EXTRA_DELETE}"></div></li>
+***reclone***
         </ul>
     </td>
 </tr>
