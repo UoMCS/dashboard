@@ -88,6 +88,7 @@ sub _build_extra_databases {
 sub _validate_repository_id {
     my $self = shift;
     my $user = $self -> {"session"} -> get_user_byid();
+    $user -> {"username"} = lc($user -> {"username"}); # force lowercase for safety
 
     # Check whether an path has been specified
     my ($path, $error) = $self -> validate_string("id", {"required"   => 0,
@@ -119,6 +120,7 @@ sub _validate_repository_id {
 sub _validate_primary_id {
     my $self = shift;
     my $user = $self -> {"session"} -> get_user_byid();
+    $user -> {"username"} = lc($user -> {"username"}); # force lowercase for safety
 
     # Users can only set a primary if they have subdirectories
     my $repos = $self -> {"system"} -> {"git"} -> user_web_repo_list($user -> {"username"});
@@ -231,6 +233,7 @@ sub _validate_repository {
     my $self = shift;
     my ($args, $errors, $error) = ({}, "", "", undef);
     my $user = $self -> {"session"} -> get_user_byid();
+    $user -> {"username"} = lc($user -> {"username"}); # force lowercase for safety
 
     $error = $self -> _validate_repository_fields($args, $user);
     $errors .= $error if($error);
@@ -270,6 +273,7 @@ sub _validate_change_repository {
     my $self = shift;
     my $path = shift;
     my $user = $self -> {"session"} -> get_user_byid();
+    $user -> {"username"} = lc($user -> {"username"}); # force lowercase for safety
 
     my ($repos, $error) = $self -> validate_string("web-repos", {"required" => 1,
                                                                  "nicename" => $self -> {"template"} -> replace_langvar("WEBSITE_REPOS"),
@@ -351,6 +355,7 @@ sub _validate_database {
     my $self = shift;
     my ($args, $errors, $error) = ({}, "", "", undef);
     my $user = $self -> {"session"} -> get_user_byid();
+    $user -> {"username"} = lc($user -> {"username"}); # force lowercase for safety
 
     $error = $self -> _validate_database_fields($args);
     $errors .= $error if($error);
@@ -431,9 +436,15 @@ sub _generate_web_publish {
     my $hasroot = 0;
     my @options = ({"value" => "-",
                     "name"  => $self -> {"template"} -> replace_langvar("WEBSITE_PRIMINDEX")});
+    # Building the list of databases for the user is safe - they won't be given the option
+    # or be able to do anything if they don't have extended.databases
     my $databases = $self -> _build_extra_databases($user -> {"username"});
+
+    # Build the list of repositories and supporting options
     foreach my $entry (@{$repos}) {
         my $extradbs = "";
+
+        # Users with additional permissions need to be able to select a database for each project.
         if($self -> check_permission('extended.databases')) {
             my $database = $self -> {"system"} -> {"databases"} -> get_user_database($user -> {"username"}, $entry -> {"subdir"});
 
@@ -441,8 +452,8 @@ sub _generate_web_publish {
                                                                                                    "***databases***" => $self -> {"template"} -> build_optionlist($databases, $database)});
         }
 
-        $rlist .= $self -> {"template"} -> load_template("dashboard/web/repo-row.tem", {"***url***"     => path_join($self -> {"settings"} -> {"git"} -> {"webbaseurl"}, lc($user -> {"username"}), $entry -> {"subdir"},"/"),
-                                                                                        "***subdir***"  => path_join($self -> {"settings"} -> {"git"} -> {"webbaseurl"}, lc($user -> {"username"}), $entry -> {"subdir"},"/"),
+        $rlist .= $self -> {"template"} -> load_template("dashboard/web/repo-row.tem", {"***url***"     => path_join($self -> {"settings"} -> {"git"} -> {"webbaseurl"}, $user -> {"username"}, $entry -> {"subdir"},"/"),
+                                                                                        "***subdir***"  => path_join($self -> {"settings"} -> {"git"} -> {"webbaseurl"}, $user -> {"username"}, $entry -> {"subdir"},"/"),
                                                                                         "***extradb***" => $extradbs,
                                                                                         "***id***"      => $entry -> {"subdir"} || "-",
                                                                                         "***source***"  => $entry -> {"origin"} });
@@ -454,8 +465,8 @@ sub _generate_web_publish {
     }
 
     my $primary = $self -> {"template"} -> load_template("dashboard/web/primary_".($hasroot ? "disabled.tem" : "enabled.tem"),
-                                                         {"***sites***"   => $self -> {"template"} -> build_optionlist(\@options, $self -> {"system"} -> {"repostools"} -> get_primary_site(lc($user -> {"username"}))),
-                                                          "***baseurl***" => path_join($self -> {"settings"} -> {"git"} -> {"webbaseurl"}, lc($user -> {"username"}))});
+                                                         {"***sites***"   => $self -> {"template"} -> build_optionlist(\@options, $self -> {"system"} -> {"repostools"} -> get_primary_site($user -> {"username"})),
+                                                          "***baseurl***" => path_join($self -> {"settings"} -> {"git"} -> {"webbaseurl"}, $user -> {"username"})});
 
     my $addform = $self -> {"template"} -> load_template("dashboard/web/addform_".($hasroot ? "gotroot.tem" : "noroot.tem"),
                                                          { "***web-repos***" => $args -> {"web-repos"},
@@ -470,7 +481,7 @@ sub _generate_web_publish {
                                                                                "***addform***"   => $addform,
                                                                                "***primary***"   => $primary,
                                                                                "***docs***"      => $self -> get_documentation_url("web"),
-                                                                               "***web_url***"   => path_join($self -> {"settings"} -> {"git"} -> {"webbaseurl"}, lc($user -> {"username"}),"/"),
+                                                                               "***web_url***"   => path_join($self -> {"settings"} -> {"git"} -> {"webbaseurl"}, $user -> {"username"},"/"),
                                                                                "***pull_url***"  => $self -> build_url(block => "manage", "pathinfo" => [ "pullrepos" ]),
                                                                                "***nuke_url***"  => $self -> build_url(block => "manage", "pathinfo" => [ "nukerepos" ]),
                                                                                "***clone_url***" => $self -> build_url(block => "manage", "pathinfo" => [ "setrepos" ]),
@@ -569,7 +580,7 @@ sub _generate_database {
         my ($dbh, $dbhost, $dbuser, $dbpass) = $self -> {"system"} -> {"databases"} -> get_user_database_server($user -> {"username"});
 
         return $self -> {"template"} -> load_template("dashboard/db/db.tem"  , {"***hostname***" => $dbhost || $self -> {"system"} -> {"databases"} -> errstr(),
-                                                                                "***username***" => lc($user -> {"username"}),
+                                                                                "***username***" => $user -> {"username"},
                                                                                 "***password***" => "{L_DATABASE_PASSWORD_COPOUT}",
                                                                                 "***docs***"     => $self -> get_documentation_url("db"),
                                                                                 "***groups***"   => $self -> _generate_group_database($groupdbs),
@@ -632,6 +643,7 @@ sub _generate_dashboard {
 sub _show_token {
     my $self   = shift;
     my $user   = $self -> {"session"} -> get_user_byid();
+    $user -> {"username"} = lc($user -> {"username"}); # force lowercase for safety
 
     $self -> log("repository", "Token requested.");
 
@@ -669,6 +681,7 @@ sub _show_token {
 sub _update_repository {
     my $self = shift;
     my $user = $self -> {"session"} -> get_user_byid();
+    $user -> {"username"} = lc($user -> {"username"}); # force lowercase for safety
 
     $self -> log("repository", "Pulling repository for user ".$user -> {"username"}.", fetching path");
 
@@ -709,6 +722,7 @@ sub _require_repository_delete_confirm {
 sub _delete_repository {
     my $self = shift;
     my $user = $self -> {"session"} -> get_user_byid();
+    $user -> {"username"} = lc($user -> {"username"}); # force lowercase for safety
 
     $self -> log("repository", "Deleting repository for user ".$user -> {"username"}.", fetching path");
 
@@ -773,6 +787,7 @@ sub _change_repository {
 sub _set_primary {
     my $self = shift;
     my $user = $self -> {"session"} -> get_user_byid();
+    $user -> {"username"} = lc($user -> {"username"}); # force lowercase for safety
 
     $self -> log("repository", "Updating primary for user ".$user -> {"username"});
 
@@ -851,6 +866,7 @@ sub _require_database_delete_confirm {
 sub _delete_database_account {
     my $self = shift;
     my $user = $self -> {"session"} -> get_user_byid();
+    $user -> {"username"} = lc($user -> {"username"}); # force lowercase for safety
 
     $self -> log("database", "Deleting database for user ".$user -> {"username"});
 
