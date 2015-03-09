@@ -532,7 +532,7 @@ sub _generate_extra_databases {
 
             $extradbs .= $self -> {"template"} -> load_template("dashboard/db/db-row.tem", {"***database***" => $database -> {"name"},
                                                                                             "***source***"   => $database -> {"source"},
-                                                                                            "***id***"       => $database -> {"id"},
+                                                                                            "***id***"       => $database -> {"name"},
                                                                                             "***reclone***"  => $reclone});
         }
 
