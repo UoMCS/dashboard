@@ -127,14 +127,9 @@ function update_repos(pathid)
                                      // No error, post was edited, the element provided should
                                      // be the new <li>...
                                      } else {
-                                         var tmp = new Element('div').adopt(respTree);
-                                         tmp = tmp.getChildren()[0];
-                                         tmp.setStyle("display", "none");
+                                         // on success, flash the row green and then back to transparent
+                                         $('site-'+pathid).set('tween', {'duration': 2000}).highlight('#0f0');
 
-                                         if($('notebox')) $('notebox').destroy();
-                                         $('infobox').adopt(tmp);
-                                         tmp.reveal();
-                                         setTimeout(function() { $('notebox').dissolve() }, 8000);
                                      }
 
                                      $('workspinner-'+pathid).fade('out');
@@ -215,6 +210,15 @@ function do_delete_repos(pathid)
                                 } else {
                                     $('site-'+pathid).fade('out').get('tween').chain(function() {
                                         $('site-'+pathid).destroy();
+
+                                        // If the table is empty, and no add form is available, redirect the user to make sure the add form appears.
+                                        if($('reposlist').getChildren().length == 0 && !$('norepoform')) {
+                                            var res = respXML.getElementsByTagName("return")[0];
+                                            var rup = res.getAttribute("url");
+
+                                            if(rup)
+                                                location.href = rup;
+                                        }
                                     });
                                 }
                                 popbox.close();
@@ -525,6 +529,11 @@ function enable_extradb_form()
     // Delete buttons for extra databases
     $$('div.control.deldb').each(function(element) { element.addEvent('click', function(event) { delete_extra_database(event.target); })
                                                    });
+
+    // Reclone buttons for cloned databases
+    $$('div.control.upddb').each(function(element) { element.addEvent('click', function(event) { reclone_extra_database(event.target); })
+                                                   });
+
 }
 
 
@@ -595,6 +604,32 @@ function delete_extra_database(element)
                                     });
                                 }
 
+                            }
+                          });
+
+    req.post({dbname: dbname});
+}
+
+
+function reclone_extra_database(element)
+{
+    var dbname = element.get('id').substr(9);
+    var req = new Request({ url: api_request_path("dashboard", "upddb"),
+                            method: 'post',
+                            onRequest: function() {
+                                $('workspinner-'+dbname).fade('in');
+                            },
+                            onSuccess: function(respText, respXML) {
+                                $('workspinner-'+dbname).fade('out');
+                                var err = respXML.getElementsByTagName("error")[0];
+
+                                if(err) {
+                                    $('errboxmsg').set('html', '<p class="error">'+err.getAttribute('info')+'</p>');
+                                    errbox.open();
+                                } else {
+                                    // on success, flash the row green and then back to transparent
+                                    $('extradb-'+dbname).set('tween', {'duration': 2000}).highlight('#0f0');
+                                }
                             }
                           });
 

@@ -620,15 +620,33 @@ sub get_user_database {
 }
 
 
-##@method $ clone_database($username, $source, $dest)
+##@method $ clone_database($username, $dest, $source)
+# Clone (or re-clone) the contents of a source database into the destination.
+# Note that the user does not need direct access to the source database, as
+# it will be cloned behind the scenes by a superuser account.
 #
+# @param username The name of the user who owns the destination database.
+# @param dest     The name of the destination database.
+# @param source   Optional source name, if not set the source associated with
+#                 the destination at creation time will be used instead.
+# @return true on success, undef on error.
 sub clone_database {
     my $self     = shift;
     my $username = shift;
-    my $source   = shift;
     my $dest     = shift;
+    my $source   = shift;
 
     $self -> clear_error();
+
+    # if the source is not defined, this should be a reclone call , so
+    # try to fetch the source based on the destination name
+    if(!$source) {
+        my $database = $self -> _get_user_database($username, $dest)
+            or return undef;
+
+        $source = $database -> {"source"}
+            or return $self -> self_error("Database '$dest' is not a cloned database!");
+    }
 
     my $copycmd = $self -> {"settings"} -> {"userdatabase"} -> {"clonedb"};
     $copycmd =~ s/%s/$source/g;
@@ -1151,6 +1169,36 @@ sub _revoke_all {
         or return $self -> self_error("Unable to revoke access to $dbname from $username: ".$dbh -> errstr);
 
     return 1;
+}
+
+
+## @method private $ _get_user_database($username, $database)
+# Given a username and database name, locate the information for the
+# user's database.
+#
+# @param username The name of the user that owns the database
+# @param database The name of the database to fetch the data for.
+# @return A reference to a hash containing the database data on success,
+#         undef on error.
+sub _get_user_database {
+    my $self = shift;
+    my $username = shift;
+    my $database = shift;
+
+    $self -> clear_error();
+
+    my $user = $self -> {"session"} -> get_user($username, 1)
+        or return $self -> self_error("Unable to get details for user '$username': ".$self -> {"session"} -> errstr());
+
+    my $dbdatah = $self -> {"dbh"} -> prepare("SELECT *
+                                             FROM `".$self -> {"settings"} -> {"database"} -> {"userdatabases"}."`
+                                             WHERE `user_id` = ?
+                                             AND `dbname` LIKE ?");
+    $dbdatah -> execute($user -> {"user_id"}, $database)
+        or return $self -> self_error("Unable to look up user database: ".$self -> {"dbh"} -> errstr);
+
+    return $dbdatah -> fetchrow_hashref()
+        or $self -> self_error("Unable to find database '$database' for user '$username'");
 }
 
 

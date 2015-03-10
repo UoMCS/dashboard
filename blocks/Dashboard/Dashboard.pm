@@ -55,6 +55,7 @@ sub _build_source_options {
     return \@options;
 }
 
+
 ## @method private $ _build_extra_databases($username)
 # Generate a list of databases the user has access to. This returns the *user's*
 # databases, rather than all databases on the server, in a form suitable to
@@ -74,6 +75,7 @@ sub _build_extra_databases {
 
     return \@options;
 }
+
 
 # ============================================================================
 #  Repository/web related
@@ -528,7 +530,8 @@ sub _generate_extra_databases {
         foreach my $database (@{$databases}) {
             next if($database -> {"name"} eq $user -> {"username"}); # skip the user's default database
 
-            my $reclone = $self -> {"template"} -> load_template("dashboard/db/db-row-reclone.tem")
+            my $reclone = $self -> {"template"} -> load_template("dashboard/db/db-row-reclone.tem", {"***database***" => $database -> {"name"},
+                                                                                                     "***id***"       => $database -> {"name"}})
                 if($database -> {"source"});
 
             $extradbs .= $self -> {"template"} -> load_template("dashboard/db/db-row.tem", {"***database***" => $database -> {"name"},
@@ -935,7 +938,7 @@ sub _add_database {
     if($source ne "-") {
         $self -> log("database", "Cloning database '$source' as '$dbname' for user ".$user -> {"username"});
 
-        $self -> {"system"} -> {"databases"} -> clone_database($user -> {"username"}, $source, $dbname)
+        $self -> {"system"} -> {"databases"} -> clone_database($user -> {"username"}, $dbname, $source)
             or return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"system"} -> {"databases"} -> errstr() }));
     }
 
@@ -1043,6 +1046,41 @@ sub _delete_database {
 }
 
 
+sub _reclone_database {
+    my $self = shift;
+
+    # Users are not allowed to reclone databases without the extended.databases capability
+    return $self -> api_errorhash("permission_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"template"} -> replace_langvar("DATABASE_APIERR_NOPERM")}))
+        unless($self -> check_permission('extended.databases'));
+
+    # Get the current user's information
+    my $user  = $self -> {"session"} -> get_user_byid();
+    $user -> {"username"} = lc($user -> {"username"});
+
+    $self -> log("database", "Re-cloning database for user ".$user -> {"username"});
+
+    # Build the list of databases the user can delete
+    my $userdbs = $self -> {"system"} -> {"databases"} -> get_user_databases($user -> {"username"});
+    my @valid_db_options = ( );
+    foreach my $database (@{$userdbs}) {
+        # Can't reclone the default database
+        next if($database -> {"name"} eq $user -> {"username"});
+
+        push(@valid_db_options, { "name" => $database -> {"name"}, "value" => $database -> {"name"} });
+    }
+
+    my ($dbname, $dberr) = $self -> validate_options("dbname", {"required" => 1,
+                                                                "nicename" => $self -> {"template"} -> replace_langvar("WEBSITE_DATABASE"),
+                                                                "source"   => \@valid_db_options});
+    return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $dberr }))
+        if($dberr);
+
+    $self -> {"system"} -> {"databases"} -> clone_database($user -> {"username"}, $dbname)
+        or return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"system"} -> {"databases"} -> errstr() }));
+
+    return { "result" => { "status" => "ok" } };
+}
+
 # ============================================================================
 #  Interface functions
 
@@ -1083,6 +1121,7 @@ sub page_display {
             when ("adddb")        { return $self -> api_response($self -> _add_database()); }
             when ("setprojdb")    { return $self -> api_response($self -> _set_project_database()); }
             when ("deldb")        { return $self -> api_response($self -> _delete_database()); }
+            when ("upddb")        { return $self -> api_response($self -> _reclone_database()); }
 
             default {
                 return $self -> api_html_response($self -> api_errorhash('bad_op',
