@@ -932,10 +932,10 @@ sub _add_database {
     $self -> log("database", "Creating database '$dbname' for user ".$user -> {"username"});
 
     # Source and name are valid, create the database accordingly
-    $self -> {"system"} -> {"databases"} -> create_user_database($user -> {"username"}, $dbname, $source ne "-" ? $source : undef)
+    $self -> {"system"} -> {"databases"} -> create_user_database($user -> {"username"}, $dbname, ($source && $source ne "-") ? $source : undef)
         or return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"system"} -> {"databases"} -> errstr() }));
 
-    if($source ne "-") {
+    if($source && $source ne "-") {
         $self -> log("database", "Cloning database '$source' as '$dbname' for user ".$user -> {"username"});
 
         $self -> {"system"} -> {"databases"} -> clone_database($user -> {"username"}, $dbname, $source)
