@@ -747,7 +747,17 @@ sub _delete_repository {
     $self -> {"system"} -> {"git"} -> delete_repository($user -> {"username"}, $path)
         or return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"system"} -> {"git"} -> errstr()}));
 
-    return { "return" => { "url" => $self -> build_url(fullurl => 1, block => "manage", pathinfo => ["webdel"], api => []) }};
+    # Remove any database allocation associated with this project
+    $self -> {"system"} -> {"databases"} -> set_user_database_project($user -> {"username"}, undef, $path)
+        or return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"system"} -> {"databases"} -> errstr()}));
+
+    # The call to delete_repository above may have changed the primary site, so fetch it
+    my $primary = $self -> {"system"} -> {"repostools"} -> get_primary_site($user -> {"username"});
+    return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"system"} -> {"repostools"} -> errstr()}))
+        if(!defined($primary));
+
+    return { "return" => { "primary" => $primary || "-",
+                           "url"     => $self -> build_url(fullurl => 1, block => "manage", pathinfo => ["webdel"], api => []) }};
 }
 
 

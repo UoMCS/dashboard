@@ -208,12 +208,19 @@ function do_delete_repos(pathid)
                                     popbox.close();
                                     errbox.open();
                                 } else {
+                                    var res = respXML.getElementsByTagName("return")[0];
+
                                     $('site-'+pathid).fade('out').get('tween').chain(function() {
                                         $('site-'+pathid).destroy();
 
+                                        // Remove the website from the primary website list
+                                        $$('select.primary option[value="'+pathid+'"]').each(function(element) { element.remove(); });
+
+                                        // And make sure the primary selection is sane
+                                        $('web-primary').set('value', res.getAttribute("primary"));
+
                                         // If the table is empty, and no add form is available, redirect the user to make sure the add form appears.
                                         if($('reposlist').getChildren().length == 0 && !$('norepoform')) {
-                                            var res = respXML.getElementsByTagName("return")[0];
                                             var rup = res.getAttribute("url");
 
                                             if(rup)

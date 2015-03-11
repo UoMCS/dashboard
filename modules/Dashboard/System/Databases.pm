@@ -547,6 +547,10 @@ sub set_user_database_project {
     my $user = $self -> {"session"} -> get_user($username, 1)
         or return $self -> self_error("Unable to get details for user '$username': ".$self -> {"session"} -> errstr());
 
+    # If there is no database set, clear any association set for the project
+    return $self -> _clear_user_database_project($user -> {"user_id"}, $project)
+        if(!$database);
+
     my $dbid = $self -> _get_user_database_id($username, $database)
         or return undef;
 
@@ -1229,6 +1233,29 @@ sub _get_user_database_id {
     my $dbid = $dbidh -> fetchrow_arrayref();
 
     return $dbid ? $dbid -> [0] : $self -> self_error("Unable to find database '$database' for user '$username'");
+}
+
+
+## @method private $ _clear_user_database_project($userid, $project)
+# Remove any database association set for the specified project directory.
+#
+# @param userid  The Id of the user who owns the project
+# @param project The project directory to clear the database for
+# @return true on success, undef on error
+sub _clear_user_database_project {
+    my $self    = shift;
+    my $userid  = shift;
+    my $project = shift;
+
+    $self -> clear_error();
+
+    my $clearh = $self -> {"dbh"} -> prepare("DELETE FROM `".$self -> {"settings"} -> {"database"} -> {"userprojdbs"}."`
+                                              WHERE `user_id` = ?
+                                              AND `project` LIKE ?");
+    $clearh -> execute($userid, $project)
+        or return $self -> self_error("Unable to remove project/database relation: ".$self -> {"dbh"} -> errstr);
+
+    return 1;
 }
 
 1;
