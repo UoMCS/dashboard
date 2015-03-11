@@ -518,6 +518,15 @@ sub _generate_group_database {
 }
 
 
+## @method private $ _generate_extra_databases($user)
+# Determines whether the user has the 'extended.databases' capability, and
+# if so this generates additional content to include in the dashboard
+# page for the user.
+#
+# @param user A reference to the user's data hash.
+# @return A string containing the extra databases content for the user, or
+#         an empty string if the user does not have permission to use extra
+#         databases.
 sub _generate_extra_databases {
     my $self = shift;
     my $user = shift;
@@ -1005,6 +1014,11 @@ sub _set_project_database {
 }
 
 
+## @method private $ _delete_database()
+# Delete a user's database, clearing any project associations for it and resetting
+# them to the user's default database.
+#
+# @return A reference to a hash containing the API response to sent back to the user.
 sub _delete_database {
     my $self = shift;
 
@@ -1039,6 +1053,8 @@ sub _delete_database {
     $self -> {"system"} -> {"databases"} -> delete_user_database($user -> {"username"}, $dbname)
         or return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"system"} -> {"databases"} -> errstr() }));
 
+    # Write all the config files again, to make sure that the projects do not
+    # reference the removed database
     $self -> {"system"} -> {"git"} -> write_config($user -> {"username"})
         or return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"system"} -> {"git"} -> errstr() }));
 
@@ -1046,6 +1062,15 @@ sub _delete_database {
 }
 
 
+## @method private $ _reclone_database()
+# Attempt to update the contents of a user's database to reflect the current state
+# of the database it was originally cloned from. If the database specified by the
+# caller was not cloned, this will generate an error, otherwise all the cloned tables
+# in the database are replaced with the tables as they currently are in the source
+# database. Tables created after the original clone are unaffected, but any data
+# added to cloned tables will be lost.
+#
+# @return A reference to a hash containing the API response to sent back to the user.
 sub _reclone_database {
     my $self = shift;
 
