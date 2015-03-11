@@ -1,2 +1,2 @@
-    <link href="{V_[templatepath]}css/dashboard.css" rel="stylesheet" />
-    <script type="text/javascript" src="{V_[templatepath]}js/dashboard.js"></script>
+    <link href="{V_[csspath]}dashboard.css" rel="stylesheet" />
+    <script type="text/javascript" src="{V_[jspath]}dashboard.js"></script>
