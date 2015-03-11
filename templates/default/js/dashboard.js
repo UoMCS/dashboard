@@ -529,6 +529,12 @@ function enable_extradb_form()
 {
     $('createdb').addEvent('click', function() { add_extra_database(); });
 
+    // Auto-set the database clone name
+    $('extradb-source').addEvent('change', function() {
+        var current = $('extradb-source').getSelected()[0].get('value');
+        $('extradb-name').set('value', current);
+    });
+
     // Dropdowns to select which database to use for each project
     $$('select.projdb').each(function(element) { element.addEvent('change', function(event) { set_project_database(event.target); })
                                                });

@@ -550,6 +550,7 @@ sub _generate_extra_databases {
         }
 
         return $self -> {"template"} -> load_template("dashboard/db/extradbs.tem", {"***extradbs***" => $extradbs,
+                                                                                    "***username***" => $user -> {"username"},
                                                                                     "***otherdbs***" => $self -> {"template"} -> build_optionlist($options) });
     }
 
