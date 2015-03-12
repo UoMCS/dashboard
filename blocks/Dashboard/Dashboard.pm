@@ -305,8 +305,9 @@ sub _add_repository {
 
     ($error, $args) = $self -> _validate_repository();
     if(!$error) {
-        print $self -> {"cgi"} -> redirect($self -> build_url(pathinfo => ["cloned"]));
-        exit;
+        my $highlight = $args -> {"web-path"} ? "site-".$args -> {"web-path"} : "site--";
+
+        return $self -> _generate_dashboard($args, undef, undef, $highlight);
     }
 
     return $self -> _generate_dashboard($args, $error);
@@ -401,8 +402,7 @@ sub _make_database {
 
     ($error, $args) = $self -> _validate_database();
     if(!$error) {
-        print $self -> {"cgi"} -> redirect($self -> build_url(pathinfo => ["newdbok"]));
-        exit;
+        return $self -> _generate_dashboard($args);
     }
 
     return $self -> _generate_dashboard($args, $error);
@@ -604,19 +604,21 @@ sub _generate_database {
 }
 
 
-# @method private @ _generate_dashboard($args, $error, $message)
+# @method private @ _generate_dashboard($args, $error, $message, $highlight)
 # Generate the page content for a dashboard page.
 #
-# @param args    An optional reference to a hash containing defaults for the form fields.
-# @param error   An optional error message to display above the form if needed.
-# @param message An optional info message to display above the form if needed.
+# @param args      An optional reference to a hash containing defaults for the form fields.
+# @param error     An optional error message to display above the form if needed.
+# @param message   An optional info message to display above the form if needed.
+# @param highlight an optional ID of the element to highligh in the page after load.
 # @return Two strings, the first containing the page title, the second containing the
 #         page content.
 sub _generate_dashboard {
-    my $self    = shift;
-    my $args    = shift || { };
-    my $error   = shift;
-    my $message = shift;
+    my $self      = shift;
+    my $args      = shift || { };
+    my $error     = shift;
+    my $message   = shift;
+    my $highlight = shift;
 
     # Get the current user's information
     my $user  = $self -> {"session"} -> get_user_byid();
@@ -636,11 +638,15 @@ sub _generate_dashboard {
     $message = $self -> {"template"} -> load_template("dashboard/info_box.tem", {"***message***" => $message})
         if($message);
 
+    $highlight = $self -> {"template"} -> load_template("dashboard/highlight.tem", {"***id***" => $highlight})
+        if($highlight);
+
     return ($self -> {"template"} -> replace_langvar("DASHBOARD_TITLE"),
-            $self -> {"template"} -> load_template("dashboard/content.tem", {"***errorbox***" => $error,
-                                                                             "***infobox***"  => $message,
-                                                                             "***webpart***"  => $webblock,
-                                                                             "***dbpart***"   => $dbblock,
+            $self -> {"template"} -> load_template("dashboard/content.tem", {"***errorbox***"  => $error,
+                                                                             "***infobox***"   => $message,
+                                                                             "***highlight***" => $highlight,
+                                                                             "***webpart***"   => $webblock,
+                                                                             "***dbpart***"    => $dbblock,
                                                    }));
 }
 
@@ -1175,15 +1181,9 @@ sub page_display {
             given($pathinfo[0]) {
                 # Repository/website operations
                 when("addrepos") { ($title, $content, $extrahead) = $self -> _add_repository(); }
-                when("cloned")   { ($title, $content, $extrahead) = $self -> _generate_dashboard(undef, undef, "{L_WEBSITE_CLONE_SUCCESS}"); }
-                when("webdel")   { ($title, $content, $extrahead) = $self -> _generate_dashboard(undef, undef, "{L_WEBSITE_NUKE_SUCCESS}"); }
-                when("webset")   { ($title, $content, $extrahead) = $self -> _generate_dashboard(undef, undef, "{L_WEBSITE_CHANGE_SUCCESS}"); }
 
                 # Database operations
                 when("newdb")    { ($title, $content, $extrahead) = $self -> _make_database(); }
-                when("newdbok")  { ($title, $content, $extrahead) = $self -> _generate_dashboard(undef, undef, "{L_DATABASE_SETUP_SUCCESS}"); }
-                when("dbset")    { ($title, $content, $extrahead) = $self -> _generate_dashboard(undef, undef, "{L_DATABASE_CHANGE_SUCCESS}"); }
-                when("dbdel")    { ($title, $content, $extrahead) = $self -> _generate_dashboard(undef, undef, "{L_DATABASE_NUKE_SUCCESS}"); }
 
                 default {
                     ($title, $content, $extrahead) = $self -> _generate_dashboard();

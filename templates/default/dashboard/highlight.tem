@@ -1,0 +1,10 @@
+<script type="text/javascript">
+// <![CDATA[
+window.addEvent('domready', function()
+{
+    if($('***id***')) {
+        $('***id***').set('tween', {'duration': 2000}).highlight('#0f0');
+    }
+});
+// ]]>
+</script>
