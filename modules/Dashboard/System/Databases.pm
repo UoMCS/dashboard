@@ -450,7 +450,7 @@ sub delete_user_database {
         or return $self -> self_error("Unable to get details for user '$username': ".$self -> {"session"} -> errstr());
 
     # Find the ID for the database, this will handily ensure it exists too
-    my $dbid = $self -> _get_user_database_id($username, $dbname)
+    my $dbid = $self -> get_user_database_id($username, $dbname)
         or return undef;
 
     # Nuke the database...
@@ -551,7 +551,7 @@ sub set_user_database_project {
     return $self -> _clear_user_database_project($user -> {"user_id"}, $project)
         if(!$database);
 
-    my $dbid = $self -> _get_user_database_id($username, $database)
+    my $dbid = $self -> get_user_database_id($username, $database)
         or return undef;
 
     # Does a relation already exist for this database and project?
@@ -621,6 +621,36 @@ sub get_user_database {
 
     # Use the default user database otherwise.
     return $username;
+}
+
+
+## @method $ get_user_database_id($username, $database)
+# Given a username and database name, locate the ID of the row that
+# associates the database with the user.
+#
+# @param username The name of the user that owns the database
+# @param database The name of the database to fetch the Id for.
+# @return The database row Id on success, undef on error.
+sub get_user_database_id {
+    my $self = shift;
+    my $username = shift;
+    my $database = shift;
+
+    $self -> clear_error();
+
+    my $user = $self -> {"session"} -> get_user($username, 1)
+        or return $self -> self_error("Unable to get details for user '$username': ".$self -> {"session"} -> errstr());
+
+    my $dbidh = $self -> {"dbh"} -> prepare("SELECT `id`
+                                             FROM `".$self -> {"settings"} -> {"database"} -> {"userdatabases"}."`
+                                             WHERE `user_id` = ?
+                                             AND `dbname` LIKE ?");
+    $dbidh -> execute($user -> {"user_id"}, $database)
+        or return $self -> self_error("Unable to look up user database: ".$self -> {"dbh"} -> errstr);
+
+    my $dbid = $dbidh -> fetchrow_arrayref();
+
+    return $dbid ? $dbid -> [0] : $self -> self_error("Unable to find database '$database' for user '$username'");
 }
 
 
@@ -1203,36 +1233,6 @@ sub _get_user_database {
 
     return $dbdatah -> fetchrow_hashref()
         or $self -> self_error("Unable to find database '$database' for user '$username'");
-}
-
-
-## @method private $ _get_user_database_id($username, $database)
-# Given a username and database name, locate the ID of the row that
-# associates the database with the user.
-#
-# @param username The name of the user that owns the database
-# @param database The name of the database to fetch the Id for.
-# @return The database row Id on success, undef on error.
-sub _get_user_database_id {
-    my $self = shift;
-    my $username = shift;
-    my $database = shift;
-
-    $self -> clear_error();
-
-    my $user = $self -> {"session"} -> get_user($username, 1)
-        or return $self -> self_error("Unable to get details for user '$username': ".$self -> {"session"} -> errstr());
-
-    my $dbidh = $self -> {"dbh"} -> prepare("SELECT `id`
-                                             FROM `".$self -> {"settings"} -> {"database"} -> {"userdatabases"}."`
-                                             WHERE `user_id` = ?
-                                             AND `dbname` LIKE ?");
-    $dbidh -> execute($user -> {"user_id"}, $database)
-        or return $self -> self_error("Unable to look up user database: ".$self -> {"dbh"} -> errstr);
-
-    my $dbid = $dbidh -> fetchrow_arrayref();
-
-    return $dbid ? $dbid -> [0] : $self -> self_error("Unable to find database '$database' for user '$username'");
 }
 
 
