@@ -307,7 +307,7 @@ sub _add_repository {
     if(!$error) {
         my $highlight = $args -> {"web-path"} ? "site-".$args -> {"web-path"} : "site--";
 
-        return $self -> _generate_dashboard($args, undef, undef, $highlight);
+        return $self -> _generate_dashboard(undef, undef, undef, $highlight);
     }
 
     return $self -> _generate_dashboard($args, $error);
@@ -408,6 +408,29 @@ sub _make_database {
     return $self -> _generate_dashboard($args, $error);
 }
 
+
+## @method private @ _hilight_dbadd($dbname)
+# Given a databse name, generate the dashboard page including a highlight for the
+# specified database. If the database does not belong to the user, this does
+# nothing.
+#
+# @param dbname The name of the database to highlight in the user's list
+# @return Two strings, the first containing the page title, the second containing the
+#         page content.
+sub _hilight_dbadd {
+    my $self   = shift;
+    my $dbname = shift;
+
+    # Get the current user's information
+    my $user  = $self -> {"session"} -> get_user_byid();
+    $user -> {"username"} = lc($user -> {"username"});
+
+    # If the database is valid and owned by the user, highlight it.
+    my $database = $self -> {"system"} -> {"databases"} -> get_user_database_id($user -> {"username"}, $dbname);
+    my $highlight = $database ? "extradb-".$dbname : "";
+
+    return $self -> _generate_dashboard(undef, undef, undef, $highlight);
+}
 
 # ============================================================================
 #  Content generation
@@ -968,7 +991,7 @@ sub _add_database {
             or return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"system"} -> {"databases"} -> errstr() }));
     }
 
-    return { "return" => { "url" => $self -> build_url(fullurl => 1, block => "manage", pathinfo => ["dbadd"], api => []) }};
+    return { "return" => { "url" => $self -> build_url(fullurl => 1, block => "manage", pathinfo => ["dbadd", $dbname], api => [], anchor => "database") }};
 }
 
 
@@ -1183,7 +1206,8 @@ sub page_display {
                 when("addrepos") { ($title, $content, $extrahead) = $self -> _add_repository(); }
 
                 # Database operations
-                when("newdb")    { ($title, $content, $extrahead) = $self -> _make_database(); }
+                when("newdb")    { ($title, $content, $extrahead) = $self -> _make_database();  }
+                when("dbadd")    { ($title, $content, $extrahead) = $self -> _hilight_dbadd($pathinfo[1]); }
 
                 default {
                     ($title, $content, $extrahead) = $self -> _generate_dashboard();
