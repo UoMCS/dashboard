@@ -15,7 +15,7 @@ DATABASE_SETUP_SUCCESS = Your database account has been created successfully.
 
 DATABASE_GOTDATABASE     = Your database account and personal database connection information is shown below. Note that, with the exception of the host name, the information is case sensitive:
 DATABASE_PASSWORD_COPOUT = &lt;the password you set&gt;
-DATABASE_LOCATION        = This information has been written to the <code>config.inc.php</code> file in your web directory, if you have it set up. You can manage your database through the web using the phpMyAdmin system here:
+DATABASE_LOCATION        = This information has been written to <code>config.inc.php</code> files in each of your web directories, if you have published any. You can manage the data in your database through the web using the phpMyAdmin system here:
 DATABASE_NEWPASS         = Change database password
 DATABASE_NUKE            = Delete database account
 
