@@ -43,8 +43,9 @@ sub fatal_error {
 # @param htaccess The name of the .htaccess file to write to
 # @param userdir  The location of the user's directory
 sub create_htaccess {
-    my $htaccess = shift;
-    my $userdir  = shift;
+    my $htaccess   = shift;
+    my $userdir    = shift;
+    my $wideaccess = shift;
     my $contents;
 
     if(-f $htaccess) {
@@ -56,7 +57,8 @@ sub create_htaccess {
     }
 
     $contents .= "\n" if($contents && $contents !~ /\n$/);
-    $contents .= "php_value open_basedir ".$userdir.":/tmp/\n";
+    $contents .= "php_value open_basedir ".$userdir.":/tmp/\n"
+        unless($wideaccess);
 
     eval { save_file($htaccess, $contents); };
     fatal_error($@) if($@);
@@ -74,9 +76,12 @@ my ($username) = $raw_username =~ /^([.\w]+)$/;
 fatal_error("Username is not valid")
     unless($username);
 
+# enable wide access?
+my $wideaccess = (defined($ARGV[1]) && $ARGV[1] eq "1");
+
 # Path can be optional
-my ($path) = $ARGV[1] =~ /^(\w+)$/
-    if($ARGV[1]);
+my ($path) = $ARGV[2] =~ /^(\w+)$/
+    if($ARGV[2]);
 
 # Where should the directory be?
 my $userbase = path_join($settings -> {"git"} -> {"webbasedir"}, $username);
@@ -114,7 +119,7 @@ if(-e $tempdir) {
 
         # Force the htaccess
         my $htaccess = path_join($userbase, ".htaccess");
-        create_htaccess($htaccess, $userbase);
+        create_htaccess($htaccess, $userbase, $wideaccess);
         $res = `/bin/chmod -R o=,g-w,u-w '$htaccess' 2>&1`;
         fatal_error("Unable to complete setup: $res") if($res);
 

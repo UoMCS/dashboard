@@ -54,7 +54,7 @@ sub _update_repository {
 
     $self -> log("remote", "Pulling repository for user ".$user -> {"username"}." path = ".$usertoken -> {"path"});
 
-    $self -> {"system"} -> {"git"} -> pull_repository($user -> {"username"}, $usertoken -> {"path"})
+    $self -> {"system"} -> {"git"} -> pull_repository($user -> {"username"}, $usertoken -> {"path"}, $self -> check_permission('extended.access', undef, $user -> {"user_id"}))
         or return $self -> _json_hash("error", $usertoken -> {"path"}, $usertoken -> {"repos_url"}, "pull failed", $self -> {"system"} -> {"git"} -> errstr());
 
     return $self -> _json_hash("success", $usertoken -> {"path"}, $usertoken -> {"repos_url"});

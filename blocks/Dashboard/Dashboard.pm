@@ -247,7 +247,7 @@ sub _validate_repository {
     $self -> log("repository", "Cloning ".$args -> {"web-repos"}." to ".$user -> {"username"});
 
     # The respository appears to be valid, do the clone
-    $self -> {"system"} -> {"git"} -> clone_repository($args -> {"web-repos"}, $user -> {"username"}, $args -> {"web-path"})
+    $self -> {"system"} -> {"git"} -> clone_repository($args -> {"web-repos"}, $user -> {"username"}, $args -> {"web-path"}, $self -> check_permission('extended.access'))
         or return ($self -> {"template"} -> load_template("error/error_list.tem", {"***message***" => "{L_WEBSITE_CLONE_FAIL}",
                                                                                    "***errors***"  => $self -> {"template"} -> load_template("error/error_item.tem",
                                                                                                                                              {"***error***" => $self -> {"system"} -> {"git"} -> errstr(),
@@ -286,7 +286,7 @@ sub _validate_change_repository {
     return ($error, undef) if($error);
 
     # The respository appears to be valid, do the clone
-    $self -> {"system"} -> {"git"} -> clone_repository($repos, $user -> {"username"}, $path)
+    $self -> {"system"} -> {"git"} -> clone_repository($repos, $user -> {"username"}, $path, $self -> check_permission('extended.access'))
         or return $self -> {"system"} -> {"git"} -> errstr();
 
     return (undef, $repos);
@@ -733,7 +733,7 @@ sub _update_repository {
 
     $self -> log("repository", "Pulling repository for user ".$user -> {"username"}." path = $path");
 
-    $self -> {"system"} -> {"git"} -> pull_repository($user -> {"username"}, $path)
+    $self -> {"system"} -> {"git"} -> pull_repository($user -> {"username"}, $path, $self -> check_permission('extended.access'))
         or return $self -> api_errorhash("internal_error", $self -> {"template"} -> replace_langvar("API_ERROR", {"***error***" => $self -> {"system"} -> {"git"} -> errstr()}));
 
     return $self -> {"template"} -> load_template("dashboard/info_box.tem", {"***message***" => "{L_WEBSITE_PULL_SUCCESS}"});

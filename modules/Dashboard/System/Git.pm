@@ -129,6 +129,7 @@ sub clone_repository {
     my $repository = shift;
     my $username   = lc(shift);
     my $subdir     = shift || "";
+    my $wideaccess = shift || "0";
 
     $self -> clear_error();
 
@@ -155,7 +156,7 @@ sub clone_repository {
     }
 
     # clone is complete, move the clone into position
-    $res = `sudo $self->{settings}->{repostools}->{postgit} $safename $safedir`;
+    $res = `sudo $self->{settings}->{repostools}->{postgit} $safename $wideaccess $safedir`;
     return $self -> self_error("Clone failed: $res") if($res);
 
     $self -> write_config($safename)
@@ -168,23 +169,25 @@ sub clone_repository {
 }
 
 
-## @method private $ _pull_cleanup($target, $username, $safename, $safedir)
+## @method private $ _pull_cleanup($target, $username, $safename, $safedir, $wideaccess)
 # Clean up after a pull (whether successful or not).
 #
-# @param target   The target path for the temporary directory.
-# @param username The username of the user doing the pull
-# @param safename The safe name of the repository
-# @param safedir  The safe name of the subdirectory
+# @param target     The target path for the temporary directory.
+# @param username   The username of the user doing the pull
+# @param safename   The safe name of the repository
+# @param safedir    The safe name of the subdirectory
+# @param wideaccess Allow privileged users to bypass per-directory restrictions.
 # @return true on success, undef on error.
 sub _pull_cleanup {
-    my $self     = shift;
-    my $target   = shift;
-    my $username = shift;
-    my $safename = shift;
-    my $safedir  = shift;
+    my $self       = shift;
+    my $target     = shift;
+    my $username   = shift;
+    my $safename   = shift;
+    my $safedir    = shift;
+    my $wideaccess = shift || "0";
 
     # pull is complete, move the repository into position
-    my $res = `sudo $self->{settings}->{repostools}->{postgit} $safename $safedir`;
+    my $res = `sudo $self->{settings}->{repostools}->{postgit} $safename $wideaccess $safedir`;
     return $self -> self_error("Pull failed: $res") if($res);
 
     $self -> write_config($safename)
@@ -197,16 +200,18 @@ sub _pull_cleanup {
 }
 
 
-## @method $ pull_repository($username, $subdir)
+## @method $ pull_repository($username, $subdir, $wideaccess)
 # Pull updates for the user's repository.
 #
 # @param username   The name of the user cloning the repository.
 # @param subdir     The name of the subdirectory to clone into.
+# @param wideaccess Allow privileged users to bypass per-directory restrictions.
 # @return true on success, undef on error.
 sub pull_repository {
     my $self       = shift;
     my $username   = lc(shift);
     my $subdir     = shift || "";
+    my $wideaccess = shift;
 
     $self -> clear_error();
 
@@ -230,7 +235,7 @@ sub pull_repository {
 
     my $basedir = path_join($self -> {"settings"} -> {"git"} -> {"webbasedir"}, $safename);
     if(my $err = $@) {
-        my $cleanup = $self -> _pull_cleanup($basedir, $username, $safename, $safedir);
+        my $cleanup = $self -> _pull_cleanup($basedir, $username, $safename, $safedir, $wideaccess);
 
         return $self -> self_error("Pull failed: unable to update from a private project. Make the project public and try again.")
             if($err =~ /could not read Username for/);
@@ -238,7 +243,7 @@ sub pull_repository {
         return $self -> self_error("Pull failed (git error): $err\n");
     }
 
-    return $self -> _pull_cleanup($basedir, $username, $safename, $safedir);
+    return $self -> _pull_cleanup($basedir, $username, $safename, $safedir, $wideaccess);
 }
 
 
