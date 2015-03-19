@@ -961,7 +961,7 @@ sub _create_update_user {
     }
 
     # User account exists, update the account's grant settings.
-    my $granth = $dbh -> prepare('GRANT USAGE ON *.* TO ?@? WITH MAX_USER_CONNECTIONS 2');
+    my $granth = $dbh -> prepare('GRANT USAGE ON *.* TO ?@? WITH MAX_USER_CONNECTIONS '.($self -> {"settings"} -> {"config"} -> {"MySQL:connlimit"} || 2));
     $granth -> execute($username, $host)
         or return $self -> self_error("Unable to grant usage rights to user account: ".$dbh -> errstr);
 
