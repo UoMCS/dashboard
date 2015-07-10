@@ -212,7 +212,7 @@ sub setup_user_account {
     $self -> flush_privileges($username)
         or return undef;
 
-    $self -> store_user_password($username, $user -> {"user_id"}, $password)
+    $self -> store_user_password($user -> {"user_id"}, $password)
         or return undef;
 
     $self -> log("database", "Completed user account for $username");
