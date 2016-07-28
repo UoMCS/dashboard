@@ -6,9 +6,7 @@ use utf8;
 use v5.12;
 use lib qw(/var/www/webperl);
 use FindBin;
-
-# FIXME: Temporary fix for 5.18 making given/when spit out warnings.
-no if $] >= 5.018, warnings => "experimental::smartmatch";
+use experimental 'smartmatch';
 
 # Work out where the script is, so module and config loading can work.
 my $scriptpath;
