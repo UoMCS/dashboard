@@ -77,10 +77,10 @@ sub get_valid_years {
     $self -> clear_error();
 
     my $lookuph = $self -> {"udata_dbh"} -> prepare("SELECT DISTINCT y.*
-                                                     FROM `".$self -> {"settings"} -> {"userdata"} -> {"user_years"}."` AS l,
-                                                          `".$self -> {"settings"} -> {"userdata"} -> {"acyears"}."` AS y
-                                                     WHERE y.id = l.year_id
-                                                     ORDER BY y.start_year DESC");
+                                                     FROM `".$self -> {"settings"} -> {"userdata"} -> {"user_years"}."` AS `l`,
+                                                          `".$self -> {"settings"} -> {"userdata"} -> {"acyears"}."` AS `y`
+                                                     WHERE `y`.`id` = `l`.`year_id`
+                                                     ORDER BY `y`.`start_year` DESC");
     $lookuph -> execute()
         or return $self -> self_error("Unable to execute academic year lookup: ".$self -> {"udata_dbh"} -> errstr);
 
@@ -163,8 +163,8 @@ sub get_user_addresses {
 
     # All students at a given level in a given year
     if(defined($settings -> {"level"}) && defined($settings -> {"yearid"})) {
-        $tables .= ", `".$self -> {"settings"} -> {"userdata"} -> {"user_years"}."` AS l";
-        $where  .= "`u`.`id` = `l`.`student_id` AND `l`.`year_id` = ? ";
+        $tables .= ", `".$self -> {"settings"} -> {"userdata"} -> {"user_years"}."` AS `l`";
+        $where  .= "`u`.`user_id` = `l`.`student_id` AND `l`.`year_id` = ? ";
         push(@params, $settings -> {"yearid"});
 
         $where .= $self -> _add_multiparam($settings -> {"level"}, \@params, "l", "level")
@@ -172,7 +172,7 @@ sub get_user_addresses {
     # All students in a given year
     } elsif(defined($settings -> {"yearid"})) {
         $tables .= ", `".$self -> {"settings"} -> {"userdata"} -> {"user_years"}."` AS l";
-        $where  .= "`u`.`id` = `l`.`student_id` AND `l`.`year_id` = ? ";
+        $where  .= "`u`.`user_id` = `l`.`student_id` AND `l`.`year_id` = ? ";
         push(@params, $settings -> {"yearid"});
     }
 
@@ -181,7 +181,7 @@ sub get_user_addresses {
         $tables .= ", `".$self -> {"settings"} -> {"userdata"} -> {"acplans"}."` AS `pl`";
         $tables .= ", `".$self -> {"settings"} -> {"userdata"} -> {"user_plans"}."` AS `p`";
         $where  .= "AND" if($where);
-        $where  .= " `p`.`student_id` = `u`.`id` AND `pl`.`id` = `p`.`plan_id` ";
+        $where  .= " `p`.`student_id` = `u`.`user_id` AND `pl`.`id` = `p`.`plan_id` ";
 
         $where .= $self -> _add_multiparam($settings -> {"plan"}, \@params, "pl", "name", "LIKE");
 
@@ -193,7 +193,7 @@ sub get_user_addresses {
         $tables .= ", `".$self -> {"settings"} -> {"userdata"} -> {"acplans"}."` AS `pl`";
         $tables .= ", `".$self -> {"settings"} -> {"userdata"} -> {"user_plans"}."` AS `p`";
         $where  .= "AND" if($where);
-        $where  .= " `p`.`student_id` = `u`.`id` AND `pl`.`id` = `p`.`plan_id` ";
+        $where  .= " `p`.`student_id` = `u`.`user_id` AND `pl`.`id` = `p`.`plan_id` ";
 
         $where .= $self -> _add_multiparam($settings -> {"exlplan"}, \@params, "pl", "name", "NOT LIKE");
     }
@@ -201,7 +201,7 @@ sub get_user_addresses {
     if(defined($settings -> {"course"}) && defined($settings -> {"yearid"})) {
         $tables .= ", `".$self -> {"settings"} -> {"userdata"} -> {"courses"}."` AS `c`";
         $tables .= ", `".$self -> {"settings"} -> {"userdata"} -> {"user_course"}."` AS `uc`";
-        $where  .= "AND `uc`.`student_id` = `u`.`id` AND `c`.`id` = `uc`.`course_id` AND `uc`.`year_id` = ? ";
+        $where  .= "AND `uc`.`user_id` = `u`.`user_id` AND `c`.`id` = `uc`.`course_id` AND `uc`.`year_id` = ? ";
         push(@params, $settings -> {"yearid"});
 
         $where .= $self -> _add_multiparam($settings -> {"course"}, \@params, "c", "course_id", "LIKE", "OR");
@@ -242,7 +242,7 @@ sub get_user_groupnames {
         or return undef;
 
     # And the list of groups the user is in
-    my $groups = $self -> _get_user_coursegroups($user -> {"id"})
+    my $groups = $self -> _get_user_coursegroups($user -> {"user_id"})
         or return undef;
 
     # now convert the list above into a single list of strings
@@ -273,7 +273,7 @@ sub _get_user {
 
     my $userh = $self -> {"udata_dbh"} -> prepare("SELECT *
                                                    FROM `".$self -> {"settings"} -> {"userdata"} -> {"users"}."`
-                                                   WHERE username LIKE ?
+                                                   WHERE `username` LIKE ?
                                                    LIMIT 1");
     $userh -> execute($username)
         or return $self -> self_error("Unable to execute userdata user lookup: ".$self -> {"dbh"} -> errstr);
@@ -308,7 +308,7 @@ sub _get_user_coursegroups {
                                                           `".$self -> {"settings"} -> {"userdata"} -> {"courses"}."` AS `c`,
                                                           `".$self -> {"settings"} -> {"userdata"} -> {"groups"}."` AS `g`,
                                                           `".$self -> {"settings"} -> {"userdata"} -> {"user_groups"}."` AS `ug`
-                                                     WHERE `ug`.`student_id` = ?
+                                                     WHERE `ug`.`user_id` = ?
                                                      AND `ug`.`active` = ?
                                                      AND `y`.`id` = `ug`.`year_id`
                                                      AND `g`.`id` = `ug`.`group_id`
