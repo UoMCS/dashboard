@@ -43,4 +43,5 @@ a:hover, a:focus {
     margin: 0px auto;
     font-size: 11px;
     color: #777;
+    clear: both;
 }
