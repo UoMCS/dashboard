@@ -308,7 +308,7 @@ sub _get_user_coursegroups {
                                                           `".$self -> {"settings"} -> {"userdata"} -> {"courses"}."` AS `c`,
                                                           `".$self -> {"settings"} -> {"userdata"} -> {"groups"}."` AS `g`,
                                                           `".$self -> {"settings"} -> {"userdata"} -> {"user_groups"}."` AS `ug`
-                                                     WHERE `ug`.`user_id` = ?
+                                                     WHERE `ug`.`student_id` = ?
                                                      AND `ug`.`active` = ?
                                                      AND `y`.`id` = `ug`.`year_id`
                                                      AND `g`.`id` = `ug`.`group_id`
