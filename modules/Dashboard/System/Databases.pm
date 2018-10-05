@@ -24,6 +24,7 @@ use strict;
 use base qw(Webperl::SystemModule);
 use Webperl::Utils qw(path_join blind_untaint);
 use DBI;
+use MongoDB;
 use v5.12;
 
 # ============================================================================
@@ -243,6 +244,9 @@ sub create_user_account {
             or return undef;
     }
 
+    $self -> _create_mongodb_account($username, $password)
+        or return undef;
+
     return 1;
 }
 
@@ -306,6 +310,9 @@ sub delete_user_account {
         $self -> _delete_user($username, $host)
             or return undef;
     }
+
+    $self -> _delete_mongodb_account($username)
+        or return undef;
 
     return 1;
 }
@@ -1255,6 +1262,61 @@ sub _clear_user_database_project {
                                               AND `project` LIKE ?");
     $clearh -> execute($userid, $project)
         or return $self -> self_error("Unable to remove project/database relation: ".$self -> {"dbh"} -> errstr);
+
+    return 1;
+}
+
+
+# ============================================================================
+#  MongoDB handling
+
+sub _create_mongodb_account {
+    my $self     = shift;
+    my $username = shift;
+    my $password = shift;
+
+    # Log into Mongo as admin
+    my $client = MongoDB::MongoClient -> new(host     => $self -> {"settings"} -> {"mongodb"} -> {"hostname"},
+                                             username => $self -> {"settings"} -> {"mongodb"} -> {"username"},
+                                             password => $self -> {"settings"} -> {"mongodb"} -> {"password"},
+                                             db_name  => $self -> {"settings"} -> {"mongodb"} -> {"authdatabase"})
+        or return $self -> self_error("Mongo connection failed");
+
+    my $db = eval { $client -> get_database($username); };
+    return $self -> self_error("MongoDB database selection failed: $@") if($@);
+
+    eval { $client -> run_command([ createUser => $username ],
+                                  { pw    => $password,
+                                    roles => [
+                                        {
+                                            role => "readWrite",
+                                            db   => $username
+                                        }
+                                        ]
+                                  });
+    };
+    return $self -> self_error("MongoDB User creation failed: $@") if($@);
+
+    return 1;
+}
+
+
+sub _delete_mongodb_account {
+    my $self     = shift;
+    my $username = shift;
+
+    # Log into Mongo as admin
+    my $client = MongoDB::MongoClient -> new(host     => $self -> {"settings"} -> {"mongodb"} -> {"hostname"},
+                                             username => $self -> {"settings"} -> {"mongodb"} -> {"username"},
+                                             password => $self -> {"settings"} -> {"mongodb"} -> {"password"},
+                                             db_name  => $self -> {"settings"} -> {"mongodb"} -> {"authdatabase"})
+        or return $self -> self_error("Mongo connection failed");
+
+    my $db = eval { $client -> get_database($username); };
+    return $self -> self_error("MongoDB database selection failed: $@") if($@);
+
+    eval { $db -> drop; };
+    return $self -> self_error("MongoDB database deletion failed: $@") if($@);
 
     return 1;
 }
