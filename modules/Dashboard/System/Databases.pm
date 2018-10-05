@@ -36,6 +36,7 @@ sub new {
     my $class    = ref($invocant) || $invocant;
     my $self     = $class -> SUPER::new(allowed_hosts => ['localhost',
                                                           '130.88.%',
+                                                          '10.%',
                                         ],
                                         @_)
         or return undef;
@@ -990,7 +991,7 @@ sub _delete_user {
     my ($dbh) = $self -> get_user_database_server($username)
         or return undef;
 
-    my $nukeh = $dbh -> prepare('DROP USER ?@?');
+    my $nukeh = $dbh -> prepare('DROP USER IF EXISTS ?@?');
     $nukeh -> execute($username, $host)
         or return $self -> self_error("Unable to delete user account: ".$dbh -> errstr());
 
