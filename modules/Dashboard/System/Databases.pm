@@ -236,6 +236,9 @@ sub create_user_account {
 
     $self -> clear_error();
 
+    $self -> delete_user_account($username)
+	or return undef;
+    
     $username = $self -> safe_username($username)
         or return undef;
 
@@ -244,8 +247,8 @@ sub create_user_account {
             or return undef;
     }
 
-    $self -> _create_mongodb_account($username, $password)
-        or return undef;
+#    $self -> _create_mongodb_account($username, $password)
+#        or return undef;
 
     return 1;
 }
@@ -302,17 +305,16 @@ sub delete_user_account {
         or return undef;
 
     foreach my $database (@{$databases}) {
-        $self -> delete_user_database($username, $database -> {"name"})
-            or return undef;
+        $self -> delete_user_database($username, $database -> {"name"});
     }
 
     foreach my $host (@{$self -> {"allowed_hosts"}}) {
-        $self -> _delete_user($username, $host)
-            or return undef;
+	# Keep going even if there are errors here.
+        $self -> _delete_user($username, $host);
     }
 
-    $self -> _delete_mongodb_account($username)
-        or return undef;
+#    $self -> _delete_mongodb_account($username)
+#        or return undef;
 
     return 1;
 }
@@ -478,8 +480,7 @@ sub delete_user_database {
         or return undef;
 
     foreach my $host (@{$self -> {"allowed_hosts"}}) {
-        $self -> _revoke_all($username, $dbname, $host)
-            or return undef;
+        $self -> _revoke_all($username, $dbname, $host);
     }
 
     return 1;
@@ -1279,21 +1280,22 @@ sub _create_mongodb_account {
     my $client = MongoDB::MongoClient -> new(host     => $self -> {"settings"} -> {"mongodb"} -> {"hostname"},
                                              username => $self -> {"settings"} -> {"mongodb"} -> {"username"},
                                              password => $self -> {"settings"} -> {"mongodb"} -> {"password"},
-                                             db_name  => $self -> {"settings"} -> {"mongodb"} -> {"authdatabase"})
+                                             db_name  => $self -> {"settings"} -> {"mongodb"} -> {"authdatabase"},
+					     ssl => 1)
         or return $self -> self_error("Mongo connection failed");
 
     my $db = eval { $client -> get_database($username); };
     return $self -> self_error("MongoDB database selection failed: $@") if($@);
 
-    eval { $client -> run_command([ createUser => $username ],
-                                  { pw    => $password,
-                                    roles => [
-                                        {
-                                            role => "readWrite",
-                                            db   => $username
-                                        }
-                                        ]
-                                  });
+    eval { $db -> run_command([ createUser => $username,
+				pwd   => $password,
+				roles => [
+				    {
+					role => "readWrite",
+					db   => $username
+				    }
+				    ]
+			      ]);
     };
     return $self -> self_error("MongoDB User creation failed: $@") if($@);
 
@@ -1309,7 +1311,8 @@ sub _delete_mongodb_account {
     my $client = MongoDB::MongoClient -> new(host     => $self -> {"settings"} -> {"mongodb"} -> {"hostname"},
                                              username => $self -> {"settings"} -> {"mongodb"} -> {"username"},
                                              password => $self -> {"settings"} -> {"mongodb"} -> {"password"},
-                                             db_name  => $self -> {"settings"} -> {"mongodb"} -> {"authdatabase"})
+                                             db_name  => $self -> {"settings"} -> {"mongodb"} -> {"authdatabase"},
+					     ssl => 1)
         or return $self -> self_error("Mongo connection failed");
 
     my $db = eval { $client -> get_database($username); };
