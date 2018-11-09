@@ -237,18 +237,18 @@ sub create_user_account {
     $self -> clear_error();
 
     $self -> delete_user_account($username)
-	or return undef;
-    
+        or return undef;
+
     $username = $self -> safe_username($username)
+        or return undef;
+
+    $self -> _create_mongodb_account($username, $password)
         or return undef;
 
     foreach my $host (@{$self -> {"allowed_hosts"}}) {
         $self -> _create_update_user($username, $host, $password)
             or return undef;
     }
-
-#    $self -> _create_mongodb_account($username, $password)
-#        or return undef;
 
     return 1;
 }
@@ -301,6 +301,9 @@ sub delete_user_account {
     $username = $self -> safe_username($username)
         or return undef;
 
+    $self -> _delete_mongodb_account($username)
+        or return undef;
+
     my $databases = $self -> get_user_databases($username)
         or return undef;
 
@@ -313,8 +316,6 @@ sub delete_user_account {
         $self -> _delete_user($username, $host);
     }
 
-#    $self -> _delete_mongodb_account($username)
-#        or return undef;
 
     return 1;
 }
@@ -1281,7 +1282,7 @@ sub _create_mongodb_account {
                                              username => $self -> {"settings"} -> {"mongodb"} -> {"username"},
                                              password => $self -> {"settings"} -> {"mongodb"} -> {"password"},
                                              db_name  => $self -> {"settings"} -> {"mongodb"} -> {"authdatabase"},
-					     ssl => 1)
+                                             ssl      => 1)
         or return $self -> self_error("Mongo connection failed");
 
     my $db = eval { $client -> get_database($username); };
@@ -1312,13 +1313,16 @@ sub _delete_mongodb_account {
                                              username => $self -> {"settings"} -> {"mongodb"} -> {"username"},
                                              password => $self -> {"settings"} -> {"mongodb"} -> {"password"},
                                              db_name  => $self -> {"settings"} -> {"mongodb"} -> {"authdatabase"},
-					     ssl => 1)
+                                             ssl      => 1)
         or return $self -> self_error("Mongo connection failed");
 
     my $db = eval { $client -> get_database($username); };
     return $self -> self_error("MongoDB database selection failed: $@") if($@);
 
-    eval { $db -> drop; };
+    eval { $db -> run_command( [ dropAllUsersFromDatabase => 1 ] ); };
+    return $self -> self_error("MongoDB user deletion failed: $@") if($@);
+
+    eval { $db -> run_command( [ dropDatabase => 1 ] ); };
     return $self -> self_error("MongoDB database deletion failed: $@") if($@);
 
     return 1;
